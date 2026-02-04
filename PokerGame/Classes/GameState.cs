@@ -7,6 +7,6 @@ public record GameState
     public required OutputType OutputType;
     
     public PlayerState? PlayerToAct;
-    public List<PlayerMove>? PossibleMoves;
+    public List<PlayerMove> PossibleMoves;
     public required int ToCall;
 }

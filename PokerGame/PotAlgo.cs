@@ -4,11 +4,11 @@ public static class PotAlgo
 {
     public static bool EnableDebugLog { get; set; } = true;
 
-    class ChipTracker(GamePlayer owner, int value, bool HasFolded)
+    class ChipTracker(GamePlayer owner, int value, bool hasFolded)
     {
         public GamePlayer Owner { get; } = owner;
         public int Value { get; set; } = value;
-        public bool HasFolded { get; } = HasFolded;
+        public bool HasFolded { get; } = hasFolded;
 
         public override string ToString()
         {
@@ -27,23 +27,23 @@ public static class PotAlgo
                 break;
             }
         }
-        if (atLeastOneNonFolded == false) throw new InternalPokerEngineException("GetPots() called when all players have folded.");
+        if (atLeastOneNonFolded == false) throw new InternalPokerGameException("GetPots() called when all players have folded.");
 
         List<ChipTracker> trackers = [];
         foreach (GamePlayer p in players)
         {
             if (p.Bet != 0)
             {
-                if(p.Bet < 0) throw new InternalPokerEngineException($"Player {p.Name} has a negative bet value.");
+                if(p.Bet < 0) throw new InternalPokerGameException($"Player {p.Name} has a negative bet value.");
                 trackers.Add(new ChipTracker(p, p.Bet, p.HasFolded));
             }
         }
 
-        if (trackers.Count == 0) throw new InternalPokerEngineException("GetPots() called when no players have bet anything.");
+        if (trackers.Count == 0) throw new InternalPokerGameException("GetPots() called when no players have bet anything.");
 
         if (EnableDebugLog)
         {
-            Console.WriteLine("Trackers:");
+            Console.WriteLine("Initial Chip Trackers:");
             foreach (ChipTracker t in trackers)
             {
                 Console.WriteLine(t);
@@ -64,12 +64,12 @@ public static class PotAlgo
 
         // pot splitting logic
         Pot pot;
-        int min = GetMin(trackers);
+        int min = GetMinBet(trackers);
         int potTotal = 0;
         int foldedTotal = 0;
         List<GamePlayer> potPlayers = [];
 
-        // loop through trackers and decrease value
+        // loop through trackers and remove value
         foreach (ChipTracker t in trackers)
         {
             if (t.HasFolded)
@@ -96,9 +96,9 @@ public static class PotAlgo
         pot = new Pot(potTotal + foldedTotal, potPlayers);
         if (EnableDebugLog)
         {
-            Console.WriteLine($"Current Number of Trackers: {trackers.Count}");
             Console.WriteLine("Pot in Recursion:");
             Console.WriteLine(pot);
+            Console.WriteLine($"Current Number of Trackers: {trackers.Count}");
             Console.WriteLine();
         }
 
@@ -111,7 +111,7 @@ public static class PotAlgo
         return pots;
     }
 
-    private static int GetMin(List<ChipTracker> trackers)
+    private static int GetMinBet(List<ChipTracker> trackers)
     {
         int min = int.MaxValue;
         bool found = false;
@@ -124,7 +124,7 @@ public static class PotAlgo
             if (t.Value < min) min = t.Value;
         }
 
-        if (!found) throw new InternalPokerEngineException("GetMin() called with no non-folded trackers remaining.");
+        if (!found) throw new InternalPokerGameException("GetMin() called with no non-folded trackers remaining. There should be at least one non-folded player, with the highest bet.");
 
         return min;
     }

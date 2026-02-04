@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace PokerGame;
 
 public class Pot(int value, List<GamePlayer> players)
@@ -11,7 +9,7 @@ public class Pot(int value, List<GamePlayer> players)
 
     public void PayWinners()
     {
-        if (Winners is null || Winners.Count == 0) throw new InvalidOperationException("Winners should never be null. This means we never determined the winners of this pot.");
+        if (Winners is null || Winners.Count == 0) throw new InvalidOperationException("Winners should never be null. This means we never determined the winner(s) of this pot.");
 
         int split = Value / Winners.Count;
         foreach (var w in Winners)

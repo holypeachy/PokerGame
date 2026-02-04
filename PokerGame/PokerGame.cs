@@ -35,7 +35,7 @@ public class PokerGame
         _deck = new();
     }
 
-    public void InitializeTable(List<PlayerInfo> playersInfo)
+    public void InitializeTable(List<PlayerInfoDto> playersInfo)
     {
         if (playersInfo.Count < 2) throw new Exception("Not enough players");
 
@@ -51,6 +51,8 @@ public class PokerGame
 
     public void StartHand()
     {
+        if(_players.Count == 0) throw new PokerGameException($"Call {InitializeTable} before {StartHand}.");
+
         _deck.ResetDeck();
         CommunityCards.Clear();
         AdvanceBlinds();
@@ -184,7 +186,7 @@ public class PokerGame
         {
             Console.WriteLine("1 non-folded player remains");
             // 1 non-folded player remains
-            GamePlayer winner = GetNonFoldedPlayer();
+            GamePlayer winner = GetTheNonFoldedPlayer();
             int pot = 0;
             foreach (var p in _players)
             {
@@ -209,7 +211,7 @@ public class PokerGame
         }
 
         List<Pot> pots = PotAlgo.GetPots(_players);
-        List<Player> algoPlayers = EnginePlayersToAlgoPlayers(_players);
+        List<Player> algoPlayers = GamePlayersToAlgoPlayers(_players);
         Console.WriteLine("All Algo Players");
         foreach (var item in algoPlayers)
         {
@@ -227,7 +229,7 @@ public class PokerGame
             {
                 if (CommunityCards.Count != 5) throw new Exception();
 
-                List<Player> winners = Algo.GetWinners(EnginePlayersToAlgoPlayers(pot.Players), CommunityCards);
+                List<Player> winners = Algo.GetWinners(GamePlayersToAlgoPlayers(pot.Players), CommunityCards);
                 Console.WriteLine("Algo Winners for THIS pot");
                 foreach (var item in winners)
                 {
@@ -235,7 +237,7 @@ public class PokerGame
                     Console.WriteLine(item.WinningHand);
                 }
                 Console.WriteLine();
-                pot.Winners = MapAlgoPlayersToEnginePlayers(winners);
+                pot.Winners = MapAlgoPlayersToGamePlayers(winners);
             }
         }
         Console.WriteLine("\n--- PAY ---\n");
@@ -248,7 +250,7 @@ public class PokerGame
     }
 
 
-    private List<GamePlayer> MapAlgoPlayersToEnginePlayers(List<Player> players)
+    private List<GamePlayer> MapAlgoPlayersToGamePlayers(List<Player> players)
     {
         List<GamePlayer> enginePlayers = new(_players);
         enginePlayers = enginePlayers.Where(p => players.Find(p2 => p2.Name == p.Name) is not null).ToList();
@@ -256,9 +258,9 @@ public class PokerGame
         return enginePlayers;
     }
 
-    private static List<Player> EnginePlayersToAlgoPlayers(List<GamePlayer> enginePlayers)
+    private static List<Player> GamePlayersToAlgoPlayers(List<GamePlayer> enginePlayers)
     {
-        List<Player> players = new();
+        List<Player> players = [];
         foreach (var ep in enginePlayers)
         {
             players.Add(new Player(ep.Name, ep.HoleCards.First, ep.HoleCards.Second));
@@ -271,7 +273,7 @@ public class PokerGame
     {
         Debug.Assert(!player.HasFolded, "Cannot get possible moves for folded player");
 
-        List<PlayerMove> moves = new();
+        List<PlayerMove> moves = [];
         int toCall = CurrentBet - player.Bet;
         if (toCall > 0)
         {
@@ -287,7 +289,7 @@ public class PokerGame
         return moves;
     }
 
-    private GamePlayer GetNonFoldedPlayer()
+    private GamePlayer GetTheNonFoldedPlayer()
     {
         foreach (var p in _players)
         {
@@ -338,7 +340,7 @@ public class PokerGame
 
     private static bool IsPlayerAllIn(GamePlayer player)
     {
-        if (player.Stack == 0 && player.Bet == 0) throw new InternalPokerEngineException("Player has 0 stack and 0 bet");
+        if (player.Stack == 0 && player.Bet == 0) throw new InternalPokerGameException("Player has 0 stack and 0 bet. Busted players should never be in play.");
         
         if (player.Stack == 0 && player.Bet > 0) return true;
         return false;

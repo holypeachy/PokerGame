@@ -4,18 +4,18 @@ class Program
 {
     static void Main()
     {
-        var engineOptions = new PokerEngineOptions { BuyIn = 1000, BigBlind = 50, AdditionalRaises = 1};
+        var engineOptions = new PokerEngineOptions { BuyIn = 1000, BigBlind = 50, AdditionalRaises = 1, EnableDebug = true};
         EngineIO io = new();
         PokerGame engine = new(engineOptions, io);
         io.SetEngine(engine);
 
-        List<PlayerInfo> playersInfo =
+        List<PlayerInfoDto> playersInfo =
         [
-            new PlayerInfo("Alpha"),
-            new PlayerInfo("Tango"),
-            new PlayerInfo("Sierra"),
-            new PlayerInfo("Quebec"),
-            new PlayerInfo("Zulu"),
+            new PlayerInfoDto("Alpha"),
+            new PlayerInfoDto("Tango"),
+            new PlayerInfoDto("Sierra"),
+            new PlayerInfoDto("Quebec"),
+            new PlayerInfoDto("Zulu"),
         ];
 
         engine.InitializeTable(playersInfo);

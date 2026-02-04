@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace PokerGame;
 
 public class GamePlayer
@@ -14,16 +12,16 @@ public class GamePlayer
 
     public GamePlayer(string name, int stack, Card first, Card second)
     {
-        Debug.Assert(!first.Equals(second), "Hole cards cannot be the same card.");
+        if (first.Equals(second)) throw new InternalPokerGameException("Hole cards should never be the same card.");
 
         Name = name;
         Stack = stack;
         HoleCards = new Pair(first, second);
     }
 
-    public GamePlayer(PlayerInfo playerInfo, int stack, Card first, Card second)
+    public GamePlayer(PlayerInfoDto playerInfo, int stack, Card first, Card second)
     {
-        Debug.Assert(!first.Equals(second), "Hole cards cannot be the same card.");
+        if (first.Equals(second)) throw new InternalPokerGameException("Hole cards should never be the same card.");
 
         Name = playerInfo.Id;
         Stack = stack;
@@ -44,14 +42,14 @@ public class GamePlayer
 
     public void Pay(int amount)
     {
-        if (amount < 0) throw new InternalPokerEngineException("Pay amount cannot be negative.");
+        if (amount < 0) throw new InternalPokerGameException("Pay amount cannot be negative.");
 
         Stack += amount;
     }
 
     public void Fold()
     {
-        if (HasFolded) throw new InternalPokerEngineException("Player has already folded.");
+        if (HasFolded) throw new InternalPokerGameException("Player has already folded.");
         HasFolded = true;
     }
 
@@ -62,7 +60,7 @@ public class GamePlayer
 
     public void MakeBet(int amount)
     {
-        if (amount < 0) throw new InternalPokerEngineException("Bet amount cannot be negative.");
+        if (amount < 0) throw new InternalPokerGameException("Bet amount cannot be negative.");
 
         MakeBlindBet(amount);
         HasActed = true;
@@ -70,7 +68,7 @@ public class GamePlayer
 
     public void MakeBlindBet(int amount)
     {
-        if (amount < 0) throw new InternalPokerEngineException("Bet amount cannot be negative.");
+        if (amount < 0) throw new InternalPokerGameException("Bet amount cannot be negative.");
         
         if (amount > Stack)
         {
@@ -84,12 +82,12 @@ public class GamePlayer
 
     public void NewHand(Card first, Card second)
     {
-        Debug.Assert(!first.Equals(second), "Hole cards cannot be the same card.");
+        if (first.Equals(second)) throw new InternalPokerGameException("Hole cards should never be the same card.");
         HoleCards = new(first, second);
     }
 
     public override string ToString()
     {
-        return $"Player: {Name} | Hand: {HoleCards} | Stack: {Stack} | CurrentBet: {Bet}";
+        return $"{Name}\nCurrentBet: {Bet} | Hand: {HoleCards} | Stack: {Stack}";
     }
 }
