@@ -1,4 +1,4 @@
-﻿namespace PokerEngine.Sandbox;
+﻿namespace PokerGame.Sandbox;
 
 class Program
 {
@@ -6,7 +6,7 @@ class Program
     {
         var engineOptions = new PokerEngineOptions { BuyIn = 1000, BigBlind = 50, AdditionalRaises = 1};
         EngineIO io = new();
-        PokerEngine engine = new(engineOptions, io);
+        PokerGame engine = new(engineOptions, io);
         io.SetEngine(engine);
 
         List<PlayerInfo> playersInfo =
@@ -33,6 +33,7 @@ TODO: Add detailed and standardized logging, log to file as well. Deep engine lo
 TODO: Add end hand and end game logic and reporting
 TODO: Implement replay functionality
 TODO: Unit and integration tests
+TODO: Account for flexible ruleset so I can make changes later
 
 ? Future Ideas
 ? 

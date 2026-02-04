@@ -1,4 +1,4 @@
-﻿namespace PokerEngine.Testing;
+﻿namespace PokerGame.Testing;
 
 public class UnitTest1
 {

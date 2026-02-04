@@ -1,12 +1,12 @@
-namespace PokerEngine;
+namespace PokerGame;
 
 public static class PotAlgo
 {
     public static bool EnableDebugLog { get; set; } = true;
 
-    class ChipTracker(EnginePlayer owner, int value, bool HasFolded)
+    class ChipTracker(GamePlayer owner, int value, bool HasFolded)
     {
-        public EnginePlayer Owner { get; } = owner;
+        public GamePlayer Owner { get; } = owner;
         public int Value { get; set; } = value;
         public bool HasFolded { get; } = HasFolded;
 
@@ -16,7 +16,7 @@ public static class PotAlgo
         }
     }
 
-    public static List<Pot> GetPots(List<EnginePlayer> players)
+    public static List<Pot> GetPots(List<GamePlayer> players)
     {
         bool atLeastOneNonFolded = false;
         foreach (var item in players)
@@ -30,7 +30,7 @@ public static class PotAlgo
         if (atLeastOneNonFolded == false) throw new InternalPokerEngineException("GetPots() called when all players have folded.");
 
         List<ChipTracker> trackers = [];
-        foreach (EnginePlayer p in players)
+        foreach (GamePlayer p in players)
         {
             if (p.Bet != 0)
             {
@@ -67,7 +67,7 @@ public static class PotAlgo
         int min = GetMin(trackers);
         int potTotal = 0;
         int foldedTotal = 0;
-        List<EnginePlayer> potPlayers = [];
+        List<GamePlayer> potPlayers = [];
 
         // loop through trackers and decrease value
         foreach (ChipTracker t in trackers)

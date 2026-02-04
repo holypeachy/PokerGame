@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 
-namespace PokerEngine;
+namespace PokerGame;
 
-public class PokerEngine
+public class PokerGame
 {
     // Engine
     public readonly PokerEngineOptions EngineOptions;
@@ -10,7 +10,7 @@ public class PokerEngine
 
     // Table
     private readonly Deck _deck;
-    private readonly List<EnginePlayer> _players;
+    private readonly List<GamePlayer> _players;
 
     // Hand
     public readonly List<Card> CommunityCards = new(5);
@@ -27,7 +27,7 @@ public class PokerEngine
     public bool IsOnePlayerLeft { get; set; } = false;
     public bool IsSkipToShowdown { get; set; } = false;
 
-    public PokerEngine(PokerEngineOptions options, IEngineIO io)
+    public PokerGame(PokerEngineOptions options, IEngineIO io)
     {
         EngineOptions = options;
         _io = io;
@@ -45,7 +45,7 @@ public class PokerEngine
 
         foreach (var pi in playersInfo)
         {
-            _players.Add(new EnginePlayer(pi, EngineOptions.BuyIn, _deck.NextCard(), _deck.NextCard()));
+            _players.Add(new GamePlayer(pi, EngineOptions.BuyIn, _deck.NextCard(), _deck.NextCard()));
         }
     }
 
@@ -109,7 +109,7 @@ public class PokerEngine
         {
             while (true)
             {
-                EnginePlayer currentPlayer = _players[CurrentPlayerIndex];
+                GamePlayer currentPlayer = _players[CurrentPlayerIndex];
 
                 // Before
                 if (currentPlayer.HasFolded || IsPlayerAllIn(currentPlayer))
@@ -184,7 +184,7 @@ public class PokerEngine
         {
             Console.WriteLine("1 non-folded player remains");
             // 1 non-folded player remains
-            EnginePlayer winner = GetNonFoldedPlayer();
+            GamePlayer winner = GetNonFoldedPlayer();
             int pot = 0;
             foreach (var p in _players)
             {
@@ -248,15 +248,15 @@ public class PokerEngine
     }
 
 
-    private List<EnginePlayer> MapAlgoPlayersToEnginePlayers(List<Player> players)
+    private List<GamePlayer> MapAlgoPlayersToEnginePlayers(List<Player> players)
     {
-        List<EnginePlayer> enginePlayers = new(_players);
+        List<GamePlayer> enginePlayers = new(_players);
         enginePlayers = enginePlayers.Where(p => players.Find(p2 => p2.Name == p.Name) is not null).ToList();
         Debug.Assert(enginePlayers.Count > 0, "No PokerAlgo players match any engine players");
         return enginePlayers;
     }
 
-    private static List<Player> EnginePlayersToAlgoPlayers(List<EnginePlayer> enginePlayers)
+    private static List<Player> EnginePlayersToAlgoPlayers(List<GamePlayer> enginePlayers)
     {
         List<Player> players = new();
         foreach (var ep in enginePlayers)
@@ -267,7 +267,7 @@ public class PokerEngine
     }
 
 
-    private List<PlayerMove> GetPossibleMoves(EnginePlayer player)
+    private List<PlayerMove> GetPossibleMoves(GamePlayer player)
     {
         Debug.Assert(!player.HasFolded, "Cannot get possible moves for folded player");
 
@@ -287,7 +287,7 @@ public class PokerEngine
         return moves;
     }
 
-    private EnginePlayer GetNonFoldedPlayer()
+    private GamePlayer GetNonFoldedPlayer()
     {
         foreach (var p in _players)
         {
@@ -336,7 +336,7 @@ public class PokerEngine
         return count;
     }
 
-    private static bool IsPlayerAllIn(EnginePlayer player)
+    private static bool IsPlayerAllIn(GamePlayer player)
     {
         if (player.Stack == 0 && player.Bet == 0) throw new InternalPokerEngineException("Player has 0 stack and 0 bet");
         

@@ -1,8 +1,8 @@
-namespace PokerEngine.Sandbox;
+namespace PokerGame.Sandbox;
 
 public class EngineIO : IEngineIO
 {
-    private PokerEngine _engine;
+    private PokerGame _engine;
 
     public PlayerInput GetInput(GameState gameState)
     {
@@ -43,7 +43,7 @@ public class EngineIO : IEngineIO
         return new PlayerInput { Move = selectedMove, Amount = gameState.ToCall + amount };
     }
 
-    public void SetEngine(PokerEngine engine)
+    public void SetEngine(PokerGame engine)
     {
         _engine = engine;
     }

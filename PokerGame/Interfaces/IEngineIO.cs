@@ -1,4 +1,4 @@
-namespace PokerEngine;
+namespace PokerGame;
 
 public interface IEngineIO
 {

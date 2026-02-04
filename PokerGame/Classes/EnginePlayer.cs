@@ -1,8 +1,8 @@
 using System.Diagnostics;
 
-namespace PokerEngine;
+namespace PokerGame;
 
-public class EnginePlayer
+public class GamePlayer
 {
     public string Name { get; }
     public int Stack { get; private set; }
@@ -12,7 +12,7 @@ public class EnginePlayer
     public bool HasActed { get; private set; } = false;
     public bool HasFolded { get; private set; } = false;
 
-    public EnginePlayer(string name, int stack, Card first, Card second)
+    public GamePlayer(string name, int stack, Card first, Card second)
     {
         Debug.Assert(!first.Equals(second), "Hole cards cannot be the same card.");
 
@@ -21,7 +21,7 @@ public class EnginePlayer
         HoleCards = new Pair(first, second);
     }
 
-    public EnginePlayer(PlayerInfo playerInfo, int stack, Card first, Card second)
+    public GamePlayer(PlayerInfo playerInfo, int stack, Card first, Card second)
     {
         Debug.Assert(!first.Equals(second), "Hole cards cannot be the same card.");
 

@@ -1,4 +1,4 @@
-namespace PokerEngine;
+namespace PokerGame;
 
 [Serializable]
 public class InternalPokerEngineException : PokerEngineException

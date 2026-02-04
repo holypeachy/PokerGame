@@ -1,13 +1,13 @@
 using System.Diagnostics;
 
-namespace PokerEngine;
+namespace PokerGame;
 
-public class Pot(int value, List<EnginePlayer> players)
+public class Pot(int value, List<GamePlayer> players)
 {
-    public List<EnginePlayer> Players { get; private set; } = players;
+    public List<GamePlayer> Players { get; private set; } = players;
     public int Value { get; private set; } = value;
     
-    public List<EnginePlayer>? Winners { get; set; } = null;
+    public List<GamePlayer>? Winners { get; set; } = null;
 
     public void PayWinners()
     {
@@ -31,7 +31,7 @@ public class Pot(int value, List<EnginePlayer> players)
         string wString = string.Empty;
         if (Winners is not null)
         {
-            foreach (EnginePlayer w in Winners)
+            foreach (GamePlayer w in Winners)
             {
                 wString += $"\t{w.Name} ({Value / Winners.Count()}) | {w.Stack} => {w.Stack + Value / Winners.Count()}\n";
             }
