@@ -2,12 +2,16 @@ namespace PokerGame.Sandbox;
 
 public class EngineIO : IEngineIO
 {
-    private PokerGame _engine;
+    private PokerGame? _engine;
 
     public PlayerInput GetInput(GameState gameState)
     {
+        if (_engine == null){
+            throw new Exception("EngineIO: when _engine is used it should already be assigned");
+        }
+
         Dictionary<int, PlayerMove> moves = new();
-        _engine.PrintGameState();
+        // _engine.PrintGameState();
         Console.WriteLine("IO Request");
         Console.WriteLine($"Output Type: {gameState.OutputType}");
         Console.WriteLine("Current Player: " + (gameState.PlayerToAct is not null ? gameState.PlayerToAct.Id : "null"));
@@ -34,12 +38,12 @@ public class EngineIO : IEngineIO
         PlayerMove selectedMove = moves[int.Parse(moveIn)];
 
         int amount = gameState.ToCall;
-        if(selectedMove is PlayerMove.Raise)
+        if (selectedMove is PlayerMove.Raise)
         {
             Console.WriteLine("ToCall + What Amount:");
             if (!int.TryParse(Console.ReadLine(), out amount)) throw new Exception();
         }
-        
+
         return new PlayerInput { Move = selectedMove, Amount = gameState.ToCall + amount };
     }
 

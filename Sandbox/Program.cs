@@ -42,5 +42,7 @@ TODO: Account for flexible ruleset so I can make changes later
 * 
 
 * Changes
+* switch to .net 10
+* start working on logging system
 * 
 */

@@ -6,7 +6,7 @@ public class PokerGame
 {
     // Engine
     public readonly PokerEngineOptions EngineOptions;
-    private readonly IEngineIO _io;
+    private IEngineIO? _io;
 
     // Table
     private readonly Deck _deck;
@@ -21,13 +21,13 @@ public class PokerGame
 
     public int CurrentPlayerIndex { get; private set; } = 0;
 
-    public int CurrentBet { get; set; } = 0;
-    public int AdditionalRaiseCount { get; set; } = 0;
+    public int CurrentBet { get; private set; } = 0;
+    public int AdditionalRaiseCount { get; private set; } = 0;
 
-    public bool IsOnePlayerLeft { get; set; } = false;
-    public bool IsSkipToShowdown { get; set; } = false;
+    public bool IsOnePlayerLeft { get; private set; } = false;
+    public bool IsSkipToShowdown { get; private set; } = false;
 
-    public PokerGame(PokerEngineOptions options, IEngineIO io)
+    public PokerGame(PokerEngineOptions options, IEngineIO? io)
     {
         EngineOptions = options;
         _io = io;
@@ -35,8 +35,18 @@ public class PokerGame
         _deck = new();
     }
 
+    public void InitializeIo(IEngineIO io){
+        if (_io is not null){
+            throw new InternalPokerGameException("io is already initialized, io cannot be reassigned");
+        }
+        else{
+            _io = io;
+        }
+    }
+
     public void InitializeTable(List<PlayerInfoDto> playersInfo)
     {
+        if (_io is null) throw new InternalPokerGameException("io has not been initialized");
         if (playersInfo.Count < 2) throw new Exception("Not enough players");
 
         _players.Clear();
@@ -140,7 +150,7 @@ public class PokerGame
                 // Action
                 var gameState = GetGameState();
                 var validMoves = gameState.PossibleMoves ?? throw new Exception();
-                PlayerInput input = _io.GetInput(gameState);
+                PlayerInput input = _io?.GetInput(gameState) ?? throw new InternalPokerGameException("io has not been initialized");
                 if (!validMoves.Contains(input.Move)) throw new Exception("Input not valid");
 
                 if (input.Move is PlayerMove.Fold)
@@ -403,28 +413,5 @@ public class PokerGame
         int temp = index + 1;
         if (temp > _players.Count - 1) temp = 0;
         return temp;
-    }
-
-
-    public void PrintGameState()
-    {
-        Console.WriteLine("-- Game State --");
-        Console.WriteLine("Players: ");
-        foreach (var p in _players)
-        {
-            Console.Write(_players.IndexOf(p) == CurrentPlayerIndex ? " ➡️  " : "");
-            Console.Write(p);
-            Console.Write(_players.IndexOf(p) == DealerIndex ? "   🎃 DEALER" : "");
-            Console.Write(_players.IndexOf(p) == SbIndex ? "   🥈 SMALL BLIND" :  "");
-            Console.Write(_players.IndexOf(p) == BbIndex ? "   🪙  BIG BLIND" : "");
-            Console.Write(p.HasFolded ? "   ⛔" : "");
-            Console.WriteLine(!p.HasFolded && p.HasActed ? "  ✅" : "");
-        }
-        Console.WriteLine("\nCommunity Cards: ");
-        foreach (var item in CommunityCards)
-        {
-            Console.Write(item + " ");
-        }
-        Console.WriteLine();
     }
 }
