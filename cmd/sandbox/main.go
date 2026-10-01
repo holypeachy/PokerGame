@@ -53,7 +53,10 @@ TODO: Account for flexible ruleset so I can make changes later
 *
 
 * Changes
-* Renamed stuff
-* Added winner mapping count validation
-* Codex updated docs
+* Removed output types
+* Added Event struct and EventType enum
+* Added BlindIndices and PotState structs
+* Added Street enum
+* Codex created events.md to document event emission
+*
 */

@@ -82,7 +82,6 @@ Each call to `NextAction` receives a `GameState` containing the current table st
 
 ## Planned Work
 
-- Review the port before I continue to implement features.
 - Add structured logging, hand histories, and replay support.
 - Complete the between-hand lifecycle, including busted-player removal and game-end reporting.
 - Add unit and integration tests for betting, pot construction, and full-hand behavior.

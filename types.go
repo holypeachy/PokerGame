@@ -10,10 +10,9 @@ func NewPlayerSpec(id string) PlayerSpec {
 	return PlayerSpec{ID: id}
 }
 
-type GameState struct {
+type ActionRequest struct {
 	PlayerStates   []PlayerState
 	CommunityCards []pokeralgo.Card
-	OutputType     OutputType
 
 	PlayerToAct  *PlayerState
 	LegalActions []ActionType
@@ -29,7 +28,7 @@ type PlayerState struct {
 	ID        string
 	Stack     int
 	Folded    bool
-	HoleCards *pokeralgo.HoleCards
+	HoleCards pokeralgo.HoleCards
 	Bet       int
 }
 
@@ -42,5 +41,5 @@ type Options struct {
 }
 
 type ActionSource interface {
-	NextAction(gameState GameState) (Action, error)
+	NextAction(gameState ActionRequest) (Action, error)
 }

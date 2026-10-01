@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"pokergame"
 	"strconv"
 	"strings"
-
-	pokergame "pokergame"
 )
 
 type ConsoleActionSource struct {
@@ -21,7 +20,7 @@ func NewConsoleActionSource() *ConsoleActionSource {
 	}
 }
 
-func (s *ConsoleActionSource) NextAction(gameState pokergame.GameState) (pokergame.Action, error) {
+func (s *ConsoleActionSource) NextAction(gameState pokergame.ActionRequest) (pokergame.Action, error) {
 	if s.engine == nil {
 		return pokergame.Action{}, fmt.Errorf("%w: ConsoleActionSource: when engine is used it should already be assigned", pokergame.ErrInternal)
 	}
@@ -29,7 +28,6 @@ func (s *ConsoleActionSource) NextAction(gameState pokergame.GameState) (pokerga
 	moves := map[int]pokergame.ActionType{}
 	// _engine.PrintGameState();
 	fmt.Println("IO Request")
-	fmt.Printf("Output Type: %s\n", gameState.OutputType)
 	currentPlayer := "null"
 	if gameState.PlayerToAct != nil {
 		currentPlayer = gameState.PlayerToAct.ID

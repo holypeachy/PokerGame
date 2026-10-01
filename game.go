@@ -174,7 +174,7 @@ func (g *Game) runStreet() error {
 			}
 
 			// Action
-			gameState := g.GameState()
+			gameState := g.actionRequest()
 			validMoves := gameState.LegalActions
 			input, err := g.actionSource.NextAction(gameState)
 			if err != nil {
@@ -430,21 +430,20 @@ func (g *Game) resetForNextHand() {
 	g.runToShowdown = false
 }
 
-func (g *Game) GameState() GameState {
+func (g *Game) actionRequest() ActionRequest {
 	playerStates := []PlayerState{}
 	for _, player := range g.players {
 		holeCards := player.HoleCards
-		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: &holeCards, Bet: player.Bet, Folded: player.Folded})
+		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: holeCards, Bet: player.Bet, Folded: player.Folded})
 	}
 	currentPlayer := &playerStates[g.actingPlayerIndex]
 	if currentPlayer.Folded {
 		panic("Current player cannot be folded")
 	}
 	toCall := g.CurrentBet - currentPlayer.Bet
-	return GameState{
+	return ActionRequest{
 		PlayerStates:   playerStates,
 		CommunityCards: append([]pokeralgo.Card(nil), g.Board...),
-		OutputType:     InputRequest,
 		PlayerToAct:    currentPlayer,
 		LegalActions:   g.legalActions(g.players[g.actingPlayerIndex]),
 		ToCall:         toCall,
