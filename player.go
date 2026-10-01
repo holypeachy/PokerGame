@@ -15,19 +15,19 @@ type Player struct {
 	Folded    bool
 }
 
-func NewPlayer(name string, stack int, first pokeralgo.Card, second pokeralgo.Card) (*Player, error) {
+func NewPlayer(id string, stack int, first pokeralgo.Card, second pokeralgo.Card) (*Player, error) {
 	if first.Equal(second) {
 		return nil, fmt.Errorf("%w: Hole cards should never be the same card.", ErrInternal)
 	}
 
 	return &Player{
-		ID:        name,
+		ID:        id,
 		Stack:     stack,
 		HoleCards: pokeralgo.HoleCards{First: first, Second: second},
 	}, nil
 }
 
-func NewPlayerFromInfo(playerInfo PlayerSpec, stack int, first pokeralgo.Card, second pokeralgo.Card) (*Player, error) {
+func NewPlayerFromSpec(playerInfo PlayerSpec, stack int, first pokeralgo.Card, second pokeralgo.Card) (*Player, error) {
 	if first.Equal(second) {
 		return nil, fmt.Errorf("%w: Hole cards should never be the same card.", ErrInternal)
 	}
@@ -45,7 +45,7 @@ func (p *Player) resetForNextHand() {
 	p.Folded = false
 }
 
-func (p *Player) resetForBettingRound() {
+func (p *Player) resetForStreet() {
 	p.Acted = false
 }
 

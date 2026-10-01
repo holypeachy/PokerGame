@@ -67,7 +67,7 @@ func (s *ConsoleActionSource) NextAction(gameState pokergame.GameState) (pokerga
 		return pokergame.Action{}, fmt.Errorf("%w: invalid move selection", pokergame.ErrGame)
 	}
 
-	amount := gameState.ToCall
+	amount := 0
 	if selectedMove == pokergame.Raise {
 		fmt.Println("ToCall + What Amount:")
 		amountIn, err := s.reader.ReadString('\n')
@@ -81,7 +81,7 @@ func (s *ConsoleActionSource) NextAction(gameState pokergame.GameState) (pokerga
 		}
 	}
 
-	return pokergame.Action{Type: selectedMove, Amount: gameState.ToCall + amount}, nil
+	return pokergame.Action{Type: selectedMove, Amount: amount + gameState.ToCall}, nil
 }
 
 func (s *ConsoleActionSource) SetEngine(engine *pokergame.Game) {

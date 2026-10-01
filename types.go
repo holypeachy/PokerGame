@@ -6,7 +6,7 @@ type PlayerSpec struct {
 	ID string
 }
 
-func NewPlayerInfo(id string) PlayerSpec {
+func NewPlayerSpec(id string) PlayerSpec {
 	return PlayerSpec{ID: id}
 }
 
@@ -28,7 +28,7 @@ type Action struct {
 type PlayerState struct {
 	ID        string
 	Stack     int
-	HasFolded bool
+	Folded    bool
 	HoleCards *pokeralgo.HoleCards
 	Bet       int
 }

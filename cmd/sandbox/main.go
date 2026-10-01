@@ -14,11 +14,11 @@ func main() {
 	actionSource.SetEngine(engine)
 
 	playersInfo := []pokergame.PlayerSpec{
-		pokergame.NewPlayerInfo("Alpha"),
-		pokergame.NewPlayerInfo("Tango"),
-		pokergame.NewPlayerInfo("Sierra"),
-		pokergame.NewPlayerInfo("Quebec"),
-		pokergame.NewPlayerInfo("Zulu"),
+		pokergame.NewPlayerSpec("Alpha"),
+		pokergame.NewPlayerSpec("Tango"),
+		pokergame.NewPlayerSpec("Sierra"),
+		pokergame.NewPlayerSpec("Quebec"),
+		pokergame.NewPlayerSpec("Zulu"),
 	}
 
 	if err := engine.SeatPlayers(playersInfo); err != nil {
@@ -53,7 +53,7 @@ TODO: Account for flexible ruleset so I can make changes later
 *
 
 * Changes
-* have codex generate architectural docs for future reference
-* renamed a bunch of symbols
-* redid errors
+* Renamed stuff
+* Added winner mapping count validation
+* Codex updated docs
 */

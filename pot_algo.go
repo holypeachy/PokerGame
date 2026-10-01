@@ -7,11 +7,11 @@ var potDebugEnabled = true
 type contribution struct {
 	Player    *Player
 	Remaining int
-	HasFolded bool
+	Folded    bool
 }
 
 func (t *contribution) String() string {
-	return fmt.Sprintf("Owner: %s | Value: %d | Folded: %t", t.Player.ID, t.Remaining, t.HasFolded)
+	return fmt.Sprintf("Owner: %s | Value: %d | Folded: %t", t.Player.ID, t.Remaining, t.Folded)
 }
 
 func buildPots(players []*Player) ([]*Pot, error) {
@@ -32,7 +32,7 @@ func buildPots(players []*Player) ([]*Pot, error) {
 			if p.Bet < 0 {
 				return nil, fmt.Errorf("%w: Player %s has a negative bet value.", ErrInternal, p.ID)
 			}
-			trackers = append(trackers, &contribution{Player: p, Remaining: p.Bet, HasFolded: p.Folded})
+			trackers = append(trackers, &contribution{Player: p, Remaining: p.Bet, Folded: p.Folded})
 		}
 	}
 
@@ -71,7 +71,7 @@ func splitPots(trackers []*contribution) ([]*Pot, error) {
 
 	// loop through trackers and remove value
 	for _, t := range trackers {
-		if t.HasFolded {
+		if t.Folded {
 			if t.Remaining <= min {
 				foldedTotal += t.Remaining
 				t.Remaining = 0
@@ -117,7 +117,7 @@ func getMinBet(trackers []*contribution) (int, error) {
 	found := false
 
 	for _, t := range trackers {
-		if t.HasFolded {
+		if t.Folded {
 			continue
 		}
 

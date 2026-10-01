@@ -62,7 +62,7 @@ func (g *Game) SeatPlayers(playersInfo []PlayerSpec) error {
 	g.dealerIndex = -1
 
 	for _, pi := range playersInfo {
-		player, err := NewPlayerFromInfo(pi, g.options.BuyIn, g.deck.MustDraw(), g.deck.MustDraw())
+		player, err := NewPlayerFromSpec(pi, g.options.BuyIn, g.deck.MustDraw(), g.deck.MustDraw())
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (g *Game) PlayHand() error {
 		}
 	}
 
-	if err := g.runBettingRound(); err != nil {
+	if err := g.runStreet(); err != nil {
 		return err
 	}
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
@@ -107,7 +107,7 @@ func (g *Game) PlayHand() error {
 	if !g.onePlayerLeft {
 		g.Board = append(g.Board, g.deck.MustDrawN(3)...)
 	}
-	if err := g.runBettingRound(); err != nil {
+	if err := g.runStreet(); err != nil {
 		return err
 	}
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
@@ -118,7 +118,7 @@ func (g *Game) PlayHand() error {
 	if !g.onePlayerLeft {
 		g.Board = append(g.Board, g.deck.MustDraw())
 	}
-	if err := g.runBettingRound(); err != nil {
+	if err := g.runStreet(); err != nil {
 		return err
 	}
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
@@ -129,7 +129,7 @@ func (g *Game) PlayHand() error {
 	if !g.onePlayerLeft {
 		g.Board = append(g.Board, g.deck.MustDraw())
 	}
-	if err := g.runBettingRound(); err != nil {
+	if err := g.runStreet(); err != nil {
 		return err
 	}
 
@@ -143,7 +143,7 @@ func (g *Game) PlayHand() error {
 	return nil
 }
 
-func (g *Game) runBettingRound() error {
+func (g *Game) runStreet() error {
 	if g.onePlayerLeft || g.runToShowdown {
 		if g.runToShowdown {
 			fmt.Println("Skip to showdown")
@@ -151,25 +151,25 @@ func (g *Game) runBettingRound() error {
 		return nil
 	}
 
-	isBettingRoundOver := false
-	for !isBettingRoundOver {
+	isStreetOver := false
+	for !isStreetOver {
 		for {
 			currentPlayer := g.players[g.actingPlayerIndex]
 
 			// Before
-			if currentPlayer.Folded || isAllIn(currentPlayer) {
-				g.actingPlayerIndex = g.nextPlayerIndex(g.actingPlayerIndex)
-				continue
-			} else if g.remainingPlayerCount() == 1 {
+			if g.remainingPlayerCount() == 1 {
 				g.onePlayerLeft = true
-				isBettingRoundOver = true
+				isStreetOver = true
 				break
 			} else if g.playersAbleToAct() < 2 && g.betsSettled() {
 				g.runToShowdown = true
-				isBettingRoundOver = true
+				isStreetOver = true
 				break
+			} else if currentPlayer.Folded || isAllIn(currentPlayer) {
+				g.actingPlayerIndex = g.nextPlayerIndex(g.actingPlayerIndex)
+				continue
 			} else if g.allPlayersActed() && g.betsSettled() {
-				isBettingRoundOver = true
+				isStreetOver = true
 				break
 			}
 
@@ -184,13 +184,14 @@ func (g *Game) runBettingRound() error {
 				return fmt.Errorf("%w: Input not valid", ErrGame)
 			}
 
+			// After
 			if input.Type == Fold {
 				if err := currentPlayer.Fold(); err != nil {
 					return err
 				}
 				if g.remainingPlayerCount() == 1 {
 					g.onePlayerLeft = true
-					isBettingRoundOver = true
+					isStreetOver = true
 					break
 				}
 			} else if input.Type == Raise || input.Type == Call {
@@ -222,9 +223,8 @@ func (g *Game) runBettingRound() error {
 				currentPlayer.Check()
 			}
 
-			// After
 			if g.playersAbleToAct() < 2 && g.betsSettled() {
-				isBettingRoundOver = true
+				isStreetOver = true
 				g.runToShowdown = true
 				break
 			}
@@ -253,7 +253,7 @@ func (g *Game) runBettingRound() error {
 			return fmt.Errorf("%w: 1 non-folded player remains but count is not 1", ErrInternal)
 		}
 	}
-	g.resetBettingRound()
+	g.resetStreet()
 	return nil
 }
 
@@ -322,6 +322,8 @@ func (g *Game) MapAlgoPlayers(players []pokeralgo.Player) []*Player {
 	}
 	if len(filtered) == 0 {
 		panic("No PokerAlgo players match any engine players")
+	} else if len(filtered) != len(players) {
+		panic("len filtered and players don't match")
 	}
 	return filtered
 }
@@ -412,9 +414,9 @@ func isAllIn(player *Player) bool {
 	return false
 }
 
-func (g *Game) resetBettingRound() {
+func (g *Game) resetStreet() {
 	for _, p := range g.players {
-		p.resetForBettingRound()
+		p.resetForStreet()
 	}
 	g.AdditionalRaiseCount = 0
 }
@@ -432,10 +434,10 @@ func (g *Game) GameState() GameState {
 	playerStates := []PlayerState{}
 	for _, player := range g.players {
 		holeCards := player.HoleCards
-		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: &holeCards, Bet: player.Bet, HasFolded: player.Folded})
+		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: &holeCards, Bet: player.Bet, Folded: player.Folded})
 	}
 	currentPlayer := &playerStates[g.actingPlayerIndex]
-	if currentPlayer.HasFolded {
+	if currentPlayer.Folded {
 		panic("Current player cannot be folded")
 	}
 	toCall := g.CurrentBet - currentPlayer.Bet

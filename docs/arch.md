@@ -13,7 +13,7 @@ who is playing
 who acts next
 what moves are legal
 how much each player has bet
-when a betting round is over
+when a street is over
 what pots exist
 who gets paid
 ```
@@ -60,7 +60,7 @@ At every street, the important question is:
 
 ```text
 Do we need more player actions,
-or is this betting round done?
+or is this street done?
 ```
 
 ## Betting Loop
@@ -70,23 +70,26 @@ The betting loop looks at the current player and decides what to do.
 Before asking for input:
 
 ```text
-if player folded:
-  skip them
-
-if player is all-in:
-  skip them
-
 if only one player has not folded:
-  end the hand and pay that player
+  leave the loop and pay that player
 
 if fewer than two players can act and bets are settled:
   stop betting and run to showdown
 
+if player folded or is all-in:
+  skip them
+
 if everyone has acted and bets are settled:
-  end this betting round
+  end this street
 ```
 
 If none of those stops happen, the engine asks the `ActionSource` for a move.
+
+Completion checks come before skipping players so an all-in table cannot loop forever. One remaining actor may still owe a call, which is why the showdown check also requires settled bets.
+
+Street closure is `allPlayersActed() && betsSettled()`: everyone still able to act has acted this street and matched `CurrentBet`. A raise leaves earlier callers owing chips, preventing premature closure without resetting their `Acted` flags.
+
+When only one non-folded player remains, `runStreet` sums all committed bets and credits that player after leaving the loop. Later streets and showdown do not pay again.
 
 ## Legal Moves
 
@@ -165,6 +168,8 @@ remaining chips become the next side pot
 So unequal all-in bets naturally become main pots and side pots.
 
 ## Future Shape
+
+Payouts and hand-state resets exist. Between-hand cleanup is still missing: remove zero-stack players after payouts, preserve dealer/blind progression as seats are removed, and stop the game when one player remains.
 
 The next version of the engine should make the hand flow observable and replayable. `Event` is currently empty and `EventSink.OnEvent(Event)` is only an interface declaration; the game does not emit events yet.
 

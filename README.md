@@ -64,9 +64,9 @@ options := pokergame.Options{
 game := pokergame.New(options, actionSource)
 
 players := []pokergame.PlayerSpec{
-	pokergame.NewPlayerInfo("Alice"),
-	pokergame.NewPlayerInfo("Bob"),
-	pokergame.NewPlayerInfo("Charlie"),
+	pokergame.NewPlayerSpec("Alice"),
+	pokergame.NewPlayerSpec("Bob"),
+	pokergame.NewPlayerSpec("Charlie"),
 }
 
 if err := game.SeatPlayers(players); err != nil {
