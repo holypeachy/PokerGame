@@ -1,15 +1,15 @@
 package pokergame
 
-type PlayerMove int
+type ActionType int
 
 const (
-	Fold PlayerMove = iota
+	Fold ActionType = iota
 	Check
 	Call
 	Raise
 )
 
-func (m PlayerMove) String() string {
+func (m ActionType) String() string {
 	switch m {
 	case Fold:
 		return "Fold"

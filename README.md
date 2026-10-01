@@ -7,7 +7,7 @@ A WIP Texas Hold'em game engine written in Go, with a simple and mechanical inte
 
 ## Overview
 
-PokerGame represents a game of Texas Hold'em. The main `PokerGame` type owns the players, deck, community cards, table positions, current bets, and the progression of each hand from the blinds through showdown.
+PokerGame represents a game of Texas Hold'em. The main `Game` type owns the players, deck, community cards, table positions, current bets, and the progression of each hand from the blinds through showdown.
 
 The engine was built on top of my [PokerAlgo](https://github.com/holypeachy/PokerAlgo), which handles hand evaluation and winner determination. PokerGame is responsible for everything around it: rotating positions (aka who plays around the table and blinds), dealing cards, generating legal moves, processing player actions, building pots, and paying winners.
 
@@ -26,18 +26,18 @@ The current implementation is a Go port of the original C# project. The port pre
 
 ## Getting Started
 
-PokerGame requires Go 1.26 or later and the current Go version of PokerAlgo. The module currently expects PokerAlgo in a neighboring directory named `pokeralgo-go`.
+PokerGame requires Go 1.26 or later and the current Go version of PokerAlgo. The module currently expects PokerAlgo in a neighboring directory named `PokerAlgo`.
 
 ```sh
 mkdir poker-project
 cd poker-project
 
-git clone https://github.com/holypeachy/PokerAlgo.git pokeralgo-go
-git clone https://github.com/holypeachy/PokerGame.git pokergame-go
+git clone https://github.com/holypeachy/PokerAlgo.git PokerAlgo
+git clone https://github.com/holypeachy/PokerGame.git PokerGame
 
-cd pokergame-go
+cd PokerGame
 go build ./...
-go run ./cmd/pokergame-sandbox
+go run ./cmd/sandbox
 ```
 
 The sandbox creates five players and runs interactive hands through the console. It is primarily a development tool for inspecting state transitions and game behavior. It is not pretty at all.
@@ -48,32 +48,32 @@ PokerGame receives player decisions through the `ActionSource` interface:
 
 ```go
 type ActionSource interface {
-	NextAction(gameState GameState) (PlayerAction, error)
+	NextAction(gameState GameState) (Action, error)
 }
 ```
 
 Once an action source is available, a table can be initialized and a hand started:
 
 ```go
-options := pokergame.PokerEngineOptions{
+options := pokergame.Options{
 	BuyIn:            1_000,
 	BigBlind:         50,
 	AdditionalRaises: 1,
 }
 
-game := pokergame.NewPokerGame(options, actionSource)
+game := pokergame.New(options, actionSource)
 
-players := []pokergame.PlayerInfoDto{
-	pokergame.NewPlayerInfoDto("Alice"),
-	pokergame.NewPlayerInfoDto("Bob"),
-	pokergame.NewPlayerInfoDto("Charlie"),
+players := []pokergame.PlayerSpec{
+	pokergame.NewPlayerInfo("Alice"),
+	pokergame.NewPlayerInfo("Bob"),
+	pokergame.NewPlayerInfo("Charlie"),
 }
 
-if err := game.InitializeTable(players); err != nil {
+if err := game.SeatPlayers(players); err != nil {
 	return err
 }
 
-if err := game.StartHand(); err != nil {
+if err := game.PlayHand(); err != nil {
 	return err
 }
 ```

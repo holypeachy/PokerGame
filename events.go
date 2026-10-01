@@ -1,8 +1,8 @@
 package pokergame
 
-type EngineEvent struct {
+type Event struct {
 }
 
 type EventSink interface {
-	OnEvent(event EngineEvent)
+	OnEvent(event Event)
 }

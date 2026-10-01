@@ -2,12 +2,12 @@ package pokergame
 
 import pokeralgo "pokeralgo"
 
-type PlayerInfoDto struct {
-	Id string
+type PlayerSpec struct {
+	ID string
 }
 
-func NewPlayerInfoDto(id string) PlayerInfoDto {
-	return PlayerInfoDto{Id: id}
+func NewPlayerInfo(id string) PlayerSpec {
+	return PlayerSpec{ID: id}
 }
 
 type GameState struct {
@@ -15,32 +15,32 @@ type GameState struct {
 	CommunityCards []pokeralgo.Card
 	OutputType     OutputType
 
-	PlayerToAct   *PlayerState
-	PossibleMoves []PlayerMove
-	ToCall        int
+	PlayerToAct  *PlayerState
+	LegalActions []ActionType
+	ToCall       int
 }
 
-type PlayerAction struct {
-	Move   PlayerMove
+type Action struct {
+	Type   ActionType
 	Amount int
 }
 
 type PlayerState struct {
-	Id        string
+	ID        string
 	Stack     int
 	HasFolded bool
-	HoleCards *pokeralgo.Pair
+	HoleCards *pokeralgo.HoleCards
 	Bet       int
 }
 
-type PokerEngineOptions struct {
+type Options struct {
 	BuyIn            int
 	BigBlind         int
 	AdditionalRaises int
 	EnableDebug      bool
-	DebugVerbosity   DebugVerbosity
+	DebugVerbosity   DebugLevel
 }
 
 type ActionSource interface {
-	NextAction(gameState GameState) (PlayerAction, error)
+	NextAction(gameState GameState) (Action, error)
 }

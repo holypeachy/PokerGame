@@ -1,9 +1,9 @@
 package pokergame
 
-type DebugVerbosity int
+type DebugLevel int
 
 const (
-	InputActions DebugVerbosity = iota
+	InputActions DebugLevel = iota
 	GameStates
 	Everything
 )

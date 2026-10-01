@@ -8,28 +8,28 @@ import (
 )
 
 func main() {
-	engineOptions := pokergame.PokerEngineOptions{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EnableDebug: true}
+	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EnableDebug: true}
 	actionSource := NewConsoleActionSource()
-	engine := pokergame.NewPokerGame(engineOptions, actionSource)
+	engine := pokergame.New(engineOptions, actionSource)
 	actionSource.SetEngine(engine)
 
-	playersInfo := []pokergame.PlayerInfoDto{
-		pokergame.NewPlayerInfoDto("Alpha"),
-		pokergame.NewPlayerInfoDto("Tango"),
-		pokergame.NewPlayerInfoDto("Sierra"),
-		pokergame.NewPlayerInfoDto("Quebec"),
-		pokergame.NewPlayerInfoDto("Zulu"),
+	playersInfo := []pokergame.PlayerSpec{
+		pokergame.NewPlayerInfo("Alpha"),
+		pokergame.NewPlayerInfo("Tango"),
+		pokergame.NewPlayerInfo("Sierra"),
+		pokergame.NewPlayerInfo("Quebec"),
+		pokergame.NewPlayerInfo("Zulu"),
 	}
 
-	if err := engine.InitializeTable(playersInfo); err != nil {
+	if err := engine.SeatPlayers(playersInfo); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := engine.StartHand(); err != nil {
+	if err := engine.PlayHand(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := engine.StartHand(); err != nil {
+	if err := engine.PlayHand(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -53,7 +53,7 @@ TODO: Account for flexible ruleset so I can make changes later
 *
 
 * Changes
-* switch to .net 10
-* start working on logging system
-*
+* have codex generate architectural docs for future reference
+* renamed a bunch of symbols
+* redid errors
 */

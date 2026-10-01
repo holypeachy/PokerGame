@@ -3,27 +3,27 @@ package pokergame
 import "fmt"
 
 type Pot struct {
-	Players []*GamePlayer
-	Value   int
+	EligiblePlayers []*Player
+	Amount          int
 
-	Winners []*GamePlayer
+	Winners []*Player
 }
 
-func NewPot(value int, players []*GamePlayer) *Pot {
+func NewPot(value int, players []*Player) *Pot {
 	return &Pot{
-		Players: players,
-		Value:   value,
+		EligiblePlayers: players,
+		Amount:          value,
 	}
 }
 
-func (p *Pot) PayWinners() error {
-	if p.Winners == nil || len(p.Winners) == 0 {
-		return fmt.Errorf("Winners should never be null. This means we never determined the winner(s) of this pot.")
+func (p *Pot) Distribute() error {
+	if len(p.Winners) == 0 {
+		return fmt.Errorf("%w: Winners should never be null. This means we never determined the winner(s) of this pot.", ErrInternal)
 	}
 
-	split := p.Value / len(p.Winners)
+	split := p.Amount / len(p.Winners)
 	for _, w := range p.Winners {
-		if err := w.Pay(split); err != nil {
+		if err := w.credit(split); err != nil {
 			return err
 		}
 	}
@@ -32,16 +32,16 @@ func (p *Pot) PayWinners() error {
 
 func (p *Pot) String() string {
 	players := "| "
-	for _, player := range p.Players {
-		players += player.Name + " | "
+	for _, player := range p.EligiblePlayers {
+		players += player.ID + " | "
 	}
 
 	wString := ""
 	if p.Winners != nil {
 		for _, winner := range p.Winners {
-			wString += fmt.Sprintf("\t%s (%d) | %d => %d\n", winner.Name, p.Value/len(p.Winners), winner.Stack, winner.Stack+p.Value/len(p.Winners))
+			wString += fmt.Sprintf("\t%s (%d) | %d => %d\n", winner.ID, p.Amount/len(p.Winners), winner.Stack, winner.Stack+p.Amount/len(p.Winners))
 		}
 	}
 
-	return fmt.Sprintf("Players (%d): \n%s\nValue: %d\nWinner(s):\n%s", len(p.Players), players, p.Value, wString)
+	return fmt.Sprintf("Players (%d): \n%s\nValue: %d\nWinner(s):\n%s", len(p.EligiblePlayers), players, p.Amount, wString)
 }

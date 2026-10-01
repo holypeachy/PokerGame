@@ -2,45 +2,45 @@ package pokergame
 
 import "fmt"
 
-var EnablePotDebugLog = true
+var potDebugEnabled = true
 
-type chipTracker struct {
-	Owner     *GamePlayer
-	Value     int
+type contribution struct {
+	Player    *Player
+	Remaining int
 	HasFolded bool
 }
 
-func (t *chipTracker) String() string {
-	return fmt.Sprintf("Owner: %s | Value: %d | Folded: %t", t.Owner.Name, t.Value, t.HasFolded)
+func (t *contribution) String() string {
+	return fmt.Sprintf("Owner: %s | Value: %d | Folded: %t", t.Player.ID, t.Remaining, t.HasFolded)
 }
 
-func GetPots(players []*GamePlayer) ([]*Pot, error) {
+func buildPots(players []*Player) ([]*Pot, error) {
 	atLeastOneNonFolded := false
 	for _, item := range players {
-		if !item.HasFolded {
+		if !item.Folded {
 			atLeastOneNonFolded = true
 			break
 		}
 	}
 	if atLeastOneNonFolded == false {
-		return nil, newInternalPokerGameError("GetPots() called when all players have folded.")
+		return nil, fmt.Errorf("%w: buildPots() called when all players have folded.", ErrInternal)
 	}
 
-	trackers := []*chipTracker{}
+	trackers := []*contribution{}
 	for _, p := range players {
 		if p.Bet != 0 {
 			if p.Bet < 0 {
-				return nil, newInternalPokerGameError("Player %s has a negative bet value.", p.Name)
+				return nil, fmt.Errorf("%w: Player %s has a negative bet value.", ErrInternal, p.ID)
 			}
-			trackers = append(trackers, &chipTracker{Owner: p, Value: p.Bet, HasFolded: p.HasFolded})
+			trackers = append(trackers, &contribution{Player: p, Remaining: p.Bet, HasFolded: p.Folded})
 		}
 	}
 
 	if len(trackers) == 0 {
-		return nil, newInternalPokerGameError("GetPots() called when no players have bet anything.")
+		return nil, fmt.Errorf("%w: buildPots() called when no players have bet anything.", ErrInternal)
 	}
 
-	if EnablePotDebugLog {
+	if potDebugEnabled {
 		fmt.Println("Initial Chip Trackers:")
 		for _, t := range trackers {
 			fmt.Println(t)
@@ -48,13 +48,13 @@ func GetPots(players []*GamePlayer) ([]*Pot, error) {
 		fmt.Println()
 	}
 
-	return splitPot(trackers)
+	return splitPots(trackers)
 }
 
-func splitPot(trackers []*chipTracker) ([]*Pot, error) {
+func splitPots(trackers []*contribution) ([]*Pot, error) {
 	// end condition
 	if len(trackers) == 0 {
-		if EnablePotDebugLog {
+		if potDebugEnabled {
 			fmt.Println("End of Recursion.")
 		}
 		return []*Pot{}, nil
@@ -67,27 +67,27 @@ func splitPot(trackers []*chipTracker) ([]*Pot, error) {
 	}
 	potTotal := 0
 	foldedTotal := 0
-	potPlayers := []*GamePlayer{}
+	potPlayers := []*Player{}
 
 	// loop through trackers and remove value
 	for _, t := range trackers {
 		if t.HasFolded {
-			if t.Value <= min {
-				foldedTotal += t.Value
-				t.Value = 0
+			if t.Remaining <= min {
+				foldedTotal += t.Remaining
+				t.Remaining = 0
 			} else {
 				foldedTotal += min
-				t.Value -= min
+				t.Remaining -= min
 			}
 		} else {
-			potPlayers = append(potPlayers, t.Owner)
+			potPlayers = append(potPlayers, t.Player)
 			potTotal += min
-			t.Value -= min
+			t.Remaining -= min
 		}
 	}
 
 	pot := NewPot(potTotal+foldedTotal, potPlayers)
-	if EnablePotDebugLog {
+	if potDebugEnabled {
 		fmt.Println("Pot in Recursion:")
 		fmt.Println(pot)
 		fmt.Printf("Current Number of Trackers: %d\n", len(trackers))
@@ -97,14 +97,14 @@ func splitPot(trackers []*chipTracker) ([]*Pot, error) {
 	// prepare trackers for next recursion
 	nextTrackers := trackers[:0]
 	for _, t := range trackers {
-		if t.Value != 0 {
+		if t.Remaining != 0 {
 			nextTrackers = append(nextTrackers, t)
 		}
 	}
 
 	// we combine all the pots
 	pots := []*Pot{pot}
-	nextPots, err := splitPot(nextTrackers)
+	nextPots, err := splitPots(nextTrackers)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func splitPot(trackers []*chipTracker) ([]*Pot, error) {
 	return pots, nil
 }
 
-func getMinBet(trackers []*chipTracker) (int, error) {
+func getMinBet(trackers []*contribution) (int, error) {
 	min := int(^uint(0) >> 1)
 	found := false
 
@@ -122,13 +122,13 @@ func getMinBet(trackers []*chipTracker) (int, error) {
 		}
 
 		found = true
-		if t.Value < min {
-			min = t.Value
+		if t.Remaining < min {
+			min = t.Remaining
 		}
 	}
 
 	if !found {
-		return 0, newInternalPokerGameError("GetMin() called with no non-folded trackers remaining. There should be at least one non-folded player, with the highest bet.")
+		return 0, fmt.Errorf("%w: getMinBet() called with no non-folded trackers remaining. There should be at least one non-folded player, with the highest bet.", ErrInternal)
 	}
 
 	return min, nil
