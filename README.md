@@ -5,15 +5,17 @@ A WIP Texas Hold'em game engine written in Go, with a simple and mechanical inte
 **Status:** Functional hand flow, active development, slow  
 **Built with:** C# => Go | [PokerAlgo](https://github.com/holypeachy/PokerAlgo)
 
+> ⚠️ This is a work in progress, code snippets and docs may be out of date
+
 ## Overview
 
 PokerGame represents a game of Texas Hold'em. The main `Game` type owns the players, deck, community cards, table positions, current bets, and the progression of each hand from the blinds through showdown.
 
 The engine was built on top of my [PokerAlgo](https://github.com/holypeachy/PokerAlgo), which handles hand evaluation and winner determination. PokerGame is responsible for everything around it: rotating positions (aka who plays around the table and blinds), dealing cards, generating legal moves, processing player actions, building pots, and paying winners.
 
-Input is kept outside the game logic through an `ActionSource`. The engine provides the current game state and valid moves, then receives a player action in return. The current sandbox uses console input, but the same boundary can later support AI players, a graphical interface, or network clients.
+Input is kept outside the game logic through an `ActionSource`. The engine provides the current relevant game state and valid moves, then receives a player action in return. The current sandbox uses console input, but the same boundary can later support AI players, a graphical interface, or network clients.
 
-The current implementation is a Go port of the original C# project. The port preserves the existing behavior so I can continue development in Go, but the engine is still unfinished and will be reviewed as work continues.
+The current implementation is a Go port of the original C# project. The port preserves the existing behavior so I can continue development in Go, but the engine is still unfinished.
 
 ## Features
 
@@ -48,7 +50,7 @@ PokerGame receives player decisions through the `ActionSource` interface:
 
 ```go
 type ActionSource interface {
-	NextAction(gameState GameState) (Action, error)
+	NextAction(ActionRequest) (Action, error)
 }
 ```
 
@@ -78,7 +80,7 @@ if err := game.PlayHand(); err != nil {
 }
 ```
 
-Each call to `NextAction` receives a `GameState` containing the current table state, the player who must act, the amount required to call, and the legal moves available to that player.
+Each call to `NextAction` receives an `ActionRequest` containing the current table state, the player who must act, the amount required to call, and the legal moves available to that player.
 
 ## Planned Work
 

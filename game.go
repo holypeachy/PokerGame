@@ -2,6 +2,7 @@ package pokergame
 
 import (
 	"fmt"
+	"slices"
 
 	pokeralgo "pokeralgo"
 )
@@ -10,13 +11,16 @@ type Game struct {
 	// Engine
 	options      Options
 	actionSource ActionSource
+	onEvent      func(Event)
 
 	// Table
 	deck    *pokeralgo.Deck
 	players []*Player
 
 	// Hand
-	Board []pokeralgo.Card
+	handNumber int
+	street     Street
+	board      []pokeralgo.Card
 
 	dealerIndex     int
 	smallBlindIndex int
@@ -31,43 +35,41 @@ type Game struct {
 	runToShowdown bool
 }
 
-func New(options Options, actionSource ActionSource) *Game {
+func New(options Options, actionSource ActionSource, onEvent func(Event)) *Game {
 	return &Game{
 		options:      options,
 		actionSource: actionSource,
+		onEvent:      onEvent,
 		players:      []*Player{},
 		deck:         pokeralgo.NewDeck(),
-		Board:        make([]pokeralgo.Card, 0, 5),
+		board:        make([]pokeralgo.Card, 0, 5),
 	}
 }
 
-func (g *Game) InitActionSource(actionSource ActionSource) error {
-	if g.actionSource != nil {
-		return fmt.Errorf("%w: action source is already initialized, action source cannot be reassigned", ErrInternal)
-	}
-	g.actionSource = actionSource
-	return nil
-}
-
-func (g *Game) SeatPlayers(playersInfo []PlayerSpec) error {
+func (g *Game) SeatPlayers(playerSpecs []PlayerSpec) error {
 	if g.actionSource == nil {
 		return fmt.Errorf("%w: action source has not been initialized", ErrInternal)
 	}
-	if len(playersInfo) < 2 {
+	if len(playerSpecs) < 2 {
 		return fmt.Errorf("%w: Not enough players", ErrGame)
 	}
 
 	g.players = g.players[:0]
 	g.deck.Reset()
 	g.dealerIndex = -1
+	g.handNumber = 0
 
-	for _, pi := range playersInfo {
-		player, err := NewPlayerFromSpec(pi, g.options.BuyIn, g.deck.MustDraw(), g.deck.MustDraw())
+	for _, pi := range playerSpecs {
+		player, err := NewPlayerFromSpec(pi, g.options.BuyIn, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Hearts, IsHoleCard: true}, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Spades, IsHoleCard: true})
 		if err != nil {
 			return err
 		}
 		g.players = append(g.players, player)
 	}
+
+	e := g.newEvent(GameStarted)
+	g.emit(e)
+
 	return nil
 }
 
@@ -76,12 +78,24 @@ func (g *Game) PlayHand() error {
 		return fmt.Errorf("%w: call SeatPlayers before PlayHand", ErrGame)
 	}
 
+	g.handNumber++
 	g.deck.Reset()
-	g.Board = g.Board[:0]
+	g.board = g.board[:0]
+
+	e := g.newEvent(HandStarted)
+	e.Board = slices.Clone(g.board)
+	g.emit(e)
+
 	g.advanceBlinds()
+	e = g.newEvent(BlindsAdvanced)
+	e.BlindIndices = &BlindIndices{
+		Dealer:     g.dealerIndex,
+		SmallBlind: g.smallBlindIndex,
+		BigBlind:   g.bigBlindIndex,
+	}
+	g.emit(e)
 
 	// Pre-flop
-	fmt.Println("Pre-Flop")
 	if err := g.players[g.smallBlindIndex].postBlind(g.options.BigBlind / 2); err != nil {
 		return err
 	}
@@ -90,22 +104,33 @@ func (g *Game) PlayHand() error {
 	}
 	g.CurrentBet = g.options.BigBlind
 
+	e = g.newEvent(BlindsPosted)
+	e.BlindIndices = &BlindIndices{
+		Dealer:     g.dealerIndex,
+		SmallBlind: g.smallBlindIndex,
+		BigBlind:   g.bigBlindIndex,
+	}
+	g.emit(e)
+
 	for _, p := range g.players {
 		if err := p.deal(g.deck.MustDraw(), g.deck.MustDraw()); err != nil {
 			return err
 		}
 	}
+	e = g.newEvent(HoleCardsDealt)
+	g.emit(e)
 
+	g.street = Preflop
 	if err := g.runStreet(); err != nil {
 		return err
 	}
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
 
 	// Flop
-	fmt.Println("Flop")
 	g.deck.MustDraw()
 	if !g.onePlayerLeft {
-		g.Board = append(g.Board, g.deck.MustDrawN(3)...)
+		g.street = Flop
+		g.board = append(g.board, g.deck.MustDrawN(3)...)
 	}
 	if err := g.runStreet(); err != nil {
 		return err
@@ -113,10 +138,10 @@ func (g *Game) PlayHand() error {
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
 
 	// Turn
-	fmt.Println("Turn")
 	g.deck.MustDraw()
 	if !g.onePlayerLeft {
-		g.Board = append(g.Board, g.deck.MustDraw())
+		g.street = Turn
+		g.board = append(g.board, g.deck.MustDraw())
 	}
 	if err := g.runStreet(); err != nil {
 		return err
@@ -124,10 +149,10 @@ func (g *Game) PlayHand() error {
 	g.actingPlayerIndex = g.nextPlayerIndex(g.dealerIndex)
 
 	// River
-	fmt.Println("River")
 	g.deck.MustDraw()
 	if !g.onePlayerLeft {
-		g.Board = append(g.Board, g.deck.MustDraw())
+		g.street = River
+		g.board = append(g.board, g.deck.MustDraw())
 	}
 	if err := g.runStreet(); err != nil {
 		return err
@@ -139,6 +164,11 @@ func (g *Game) PlayHand() error {
 		}
 	}
 
+	e = g.newEvent(HandEnded)
+	e.Board = slices.Clone(g.board)
+	// pots?!!!
+	g.emit(e)
+
 	g.resetForNextHand()
 	return nil
 }
@@ -147,9 +177,19 @@ func (g *Game) runStreet() error {
 	if g.onePlayerLeft || g.runToShowdown {
 		if g.runToShowdown {
 			fmt.Println("Skip to showdown")
+			e := g.newEvent(StreetStarted)
+			e.Board = slices.Clone(g.board)
+			s := g.street
+			e.Street = &s
+			g.emit(e)
 		}
 		return nil
 	}
+	e := g.newEvent(StreetStarted)
+	e.Board = slices.Clone(g.board)
+	s := g.street
+	e.Street = &s
+	g.emit(e)
 
 	isStreetOver := false
 	for !isStreetOver {
@@ -164,6 +204,8 @@ func (g *Game) runStreet() error {
 			} else if g.playersAbleToAct() < 2 && g.betsSettled() {
 				g.runToShowdown = true
 				isStreetOver = true
+				e := g.newEvent(RunToShowdown)
+				g.emit(e)
 				break
 			} else if currentPlayer.Folded || isAllIn(currentPlayer) {
 				g.actingPlayerIndex = g.nextPlayerIndex(g.actingPlayerIndex)
@@ -174,13 +216,33 @@ func (g *Game) runStreet() error {
 			}
 
 			// Action
-			gameState := g.actionRequest()
-			validMoves := gameState.LegalActions
-			input, err := g.actionSource.NextAction(gameState)
+			actionRequest := g.actionRequest()
+			validMoves := actionRequest.LegalActions
+
+			e := g.newEvent(ActionRequested)
+			id := g.players[g.actingPlayerIndex].ID
+			e.PlayerID = &id
+			e.Board = slices.Clone(g.board)
+			e.LegalActions = slices.Clone(validMoves)
+			e.Amount = &actionRequest.ToCall
+			g.emit(e)
+
+			input, err := g.actionSource.NextAction(actionRequest)
 			if err != nil {
 				return err
 			}
 			if !containsAction(validMoves, input.Type) {
+
+				e := g.newEvent(ActionInvalid)
+				id := g.players[g.actingPlayerIndex].ID
+				e.PlayerID = &id
+				e.Board = slices.Clone(g.board)
+				e.LegalActions = slices.Clone(validMoves)
+				e.Amount = &actionRequest.ToCall
+				a := input.Type
+				e.ActionType = &a
+				g.emit(e)
+
 				return fmt.Errorf("%w: Input not valid", ErrGame)
 			}
 
@@ -192,6 +254,15 @@ func (g *Game) runStreet() error {
 				if g.remainingPlayerCount() == 1 {
 					g.onePlayerLeft = true
 					isStreetOver = true
+					e := g.newEvent(ActionValid)
+					id := currentPlayer.ID
+					e.PlayerID = &id
+					e.Board = slices.Clone(g.board)
+					amount := input.Amount
+					e.Amount = &amount
+					actionType := input.Type
+					e.ActionType = &actionType
+					g.emit(e)
 					break
 				}
 			} else if input.Type == Raise || input.Type == Call {
@@ -202,7 +273,7 @@ func (g *Game) runStreet() error {
 				if input.Type == Raise {
 					toCall := g.CurrentBet - currentPlayer.Bet
 					if input.Amount < toCall {
-						if err := currentPlayer.commitChips(toCall + 10); err != nil {
+						if err := currentPlayer.commitChips(toCall + 10); err != nil { // magic number warning
 							return err
 						}
 					} else {
@@ -223,9 +294,21 @@ func (g *Game) runStreet() error {
 				currentPlayer.Check()
 			}
 
+			e = g.newEvent(ActionValid)
+			id2 := g.players[g.actingPlayerIndex].ID
+			e.PlayerID = &id2
+			e.Board = slices.Clone(g.board)
+			am := input.Amount
+			e.Amount = &am
+			a := input.Type
+			e.ActionType = &a
+			g.emit(e)
+
 			if g.playersAbleToAct() < 2 && g.betsSettled() {
 				isStreetOver = true
 				g.runToShowdown = true
+				e := g.newEvent(RunToShowdown)
+				g.emit(e)
 				break
 			}
 
@@ -235,7 +318,6 @@ func (g *Game) runStreet() error {
 	}
 
 	if g.onePlayerLeft {
-		fmt.Println("1 non-folded player remains")
 		// 1 non-folded player remains
 		winner, err := g.remainingPlayer()
 		if err != nil {
@@ -252,7 +334,22 @@ func (g *Game) runStreet() error {
 		if g.remainingPlayerCount() != 1 {
 			return fmt.Errorf("%w: 1 non-folded player remains but count is not 1", ErrInternal)
 		}
+
+		e = g.newEvent(OnePlayerLeft)
+		e.Board = slices.Clone(g.board)
+		id := winner.ID
+		e.PlayerID = &id
+		e.Pots = &[]PotState{
+			{EligiblePlayerIDs: []string{winner.ID},
+				Amount:    pot,
+				WinnerIDs: []string{winner.ID}},
+		}
+		g.emit(e)
 	}
+	e = g.newEvent(StreetEnded)
+	e.Board = slices.Clone(g.board)
+	g.emit(e)
+
 	g.resetStreet()
 	return nil
 }
@@ -267,6 +364,23 @@ func (g *Game) resolveShowdown() error {
 	if err != nil {
 		return err
 	}
+
+	e := g.newEvent(PotsCreated)
+	e.Board = slices.Clone(g.board)
+	eventPots := make([]PotState, 0, len(pots))
+	for _, p := range pots {
+		elig := make([]string, 0, len(p.EligiblePlayers))
+		for _, e := range p.EligiblePlayers {
+			elig = append(elig, e.ID)
+		}
+		eventPots = append(eventPots, PotState{
+			EligiblePlayerIDs: elig,
+			Amount:            p.Amount,
+		})
+	}
+	e.Pots = &eventPots
+	g.emit(e)
+
 	algoPlayers := toAlgoPlayers(g.players)
 	fmt.Println("All Algo Players")
 	for _, item := range algoPlayers {
@@ -279,139 +393,67 @@ func (g *Game) resolveShowdown() error {
 		} else if len(pot.EligiblePlayers) < 1 {
 			return fmt.Errorf("%w: pot has no players", ErrInternal)
 		} else {
-			if len(g.Board) != 5 {
+			if len(g.board) != 5 {
 				return fmt.Errorf("%w: community cards count is not 5", ErrInternal)
 			}
 
-			winners, err := pokeralgo.DetermineWinners(toAlgoPlayers(pot.EligiblePlayers), g.Board)
+			winners, err := pokeralgo.DetermineWinners(toAlgoPlayers(pot.EligiblePlayers), g.board)
 			if err != nil {
 				return err
 			}
-			fmt.Println("Algo Winners for THIS pot")
-			for _, item := range winners {
-				fmt.Println(item)
-				if item.BestHand != nil {
-					fmt.Println(item.BestHand)
-				}
-			}
-			fmt.Println()
-			pot.Winners = g.MapAlgoPlayers(winners)
+
+			pot.Winners = g.mapAlgoPlayers(winners)
 		}
 	}
+	e = g.newEvent(WinnersDetermined)
+	e.Board = slices.Clone(g.board)
+	eventPots = make([]PotState, 0, len(pots))
+	for _, p := range pots {
+		eligIDs := make([]string, 0, len(p.EligiblePlayers))
+		for _, e := range p.EligiblePlayers {
+			eligIDs = append(eligIDs, e.ID)
+		}
+		winIDs := make([]string, 0, len(p.Winners))
+		for _, w := range p.Winners {
+			winIDs = append(winIDs, w.ID)
+		}
+		eventPots = append(eventPots, PotState{
+			EligiblePlayerIDs: eligIDs,
+			Amount:            p.Amount,
+			WinnerIDs:         winIDs,
+		})
+	}
+	e.Pots = &eventPots
+	g.emit(e)
+
 	fmt.Print("\n--- PAY ---\n\n")
 	for _, item := range pots {
-		fmt.Print("\nPot:\n")
-		fmt.Println(item)
 		if err := item.Distribute(); err != nil {
 			return err
 		}
 	}
+
+	e = g.newEvent(ChipsAwarded)
+	e.Board = slices.Clone(g.board)
+	eventPots = make([]PotState, 0, len(pots))
+	for _, p := range pots {
+		eligIDs := make([]string, 0, len(p.EligiblePlayers))
+		for _, e := range p.EligiblePlayers {
+			eligIDs = append(eligIDs, e.ID)
+		}
+		winIDs := make([]string, 0, len(p.Winners))
+		for _, w := range p.Winners {
+			winIDs = append(winIDs, w.ID)
+		}
+		eventPots = append(eventPots, PotState{
+			EligiblePlayerIDs: eligIDs,
+			Amount:            p.Amount,
+			WinnerIDs:         winIDs,
+		})
+	}
+	e.Pots = &eventPots
+	g.emit(e)
 	return nil
-}
-
-func (g *Game) MapAlgoPlayers(players []pokeralgo.Player) []*Player {
-	enginePlayers := append([]*Player(nil), g.players...)
-	filtered := []*Player{}
-	for _, p := range enginePlayers {
-		for _, p2 := range players {
-			if p2.Name == p.ID {
-				filtered = append(filtered, p)
-				break
-			}
-		}
-	}
-	if len(filtered) == 0 {
-		panic("No PokerAlgo players match any engine players")
-	} else if len(filtered) != len(players) {
-		panic("len filtered and players don't match")
-	}
-	return filtered
-}
-
-func toAlgoPlayers(enginePlayers []*Player) []pokeralgo.Player {
-	players := []pokeralgo.Player{}
-	for _, ep := range enginePlayers {
-		players = append(players, pokeralgo.NewPlayer(ep.ID, ep.HoleCards.First, ep.HoleCards.Second))
-	}
-	return players
-}
-
-func (g *Game) legalActions(player *Player) []ActionType {
-	if player.Folded {
-		panic("Cannot get possible moves for folded player")
-	}
-
-	moves := []ActionType{}
-	toCall := g.CurrentBet - player.Bet
-	if toCall > 0 {
-		moves = append(moves, Call)
-		moves = append(moves, Fold)
-	} else if toCall == 0 {
-		moves = append(moves, Check)
-	}
-	// we count players that can act because we don't want to raise if another player is all-in
-	if g.AdditionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 {
-		moves = append(moves, Raise)
-	}
-	return moves
-}
-
-func (g *Game) remainingPlayer() (*Player, error) {
-	for _, p := range g.players {
-		if !p.Folded {
-			return p, nil
-		}
-	}
-	return nil, fmt.Errorf("%w: No non-folded player", ErrInternal)
-}
-
-func (g *Game) betsSettled() bool {
-	for _, p := range g.players {
-		if !p.Folded && !isAllIn(p) && g.CurrentBet != p.Bet {
-			return false
-		}
-	}
-	return true
-}
-
-func (g *Game) allPlayersActed() bool {
-	for _, p := range g.players {
-		if !p.Folded && !p.Acted && !isAllIn(p) {
-			return false
-		}
-	}
-	return true
-}
-
-func (g *Game) playersAbleToAct() int {
-	count := 0
-	for _, p := range g.players {
-		if !p.Folded && !isAllIn(p) {
-			count++
-		}
-	}
-	return count
-}
-
-func (g *Game) remainingPlayerCount() int {
-	count := 0
-	for _, p := range g.players {
-		if !p.Folded {
-			count++
-		}
-	}
-	return count
-}
-
-func isAllIn(player *Player) bool {
-	if player.Stack == 0 && player.Bet == 0 {
-		panic(fmt.Errorf("%w: Player has 0 stack and 0 bet. Busted players should never be in play.", ErrInternal))
-	}
-
-	if player.Stack == 0 && player.Bet > 0 {
-		return true
-	}
-	return false
 }
 
 func (g *Game) resetStreet() {
@@ -428,48 +470,5 @@ func (g *Game) resetForNextHand() {
 	g.AdditionalRaiseCount = 0
 	g.onePlayerLeft = false
 	g.runToShowdown = false
-}
-
-func (g *Game) actionRequest() ActionRequest {
-	playerStates := []PlayerState{}
-	for _, player := range g.players {
-		holeCards := player.HoleCards
-		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: holeCards, Bet: player.Bet, Folded: player.Folded})
-	}
-	currentPlayer := &playerStates[g.actingPlayerIndex]
-	if currentPlayer.Folded {
-		panic("Current player cannot be folded")
-	}
-	toCall := g.CurrentBet - currentPlayer.Bet
-	return ActionRequest{
-		PlayerStates:   playerStates,
-		CommunityCards: append([]pokeralgo.Card(nil), g.Board...),
-		PlayerToAct:    currentPlayer,
-		LegalActions:   g.legalActions(g.players[g.actingPlayerIndex]),
-		ToCall:         toCall,
-	}
-}
-
-func (g *Game) advanceBlinds() {
-	g.dealerIndex = g.nextPlayerIndex(g.dealerIndex)
-	g.smallBlindIndex = g.nextPlayerIndex(g.dealerIndex)
-	g.bigBlindIndex = g.nextPlayerIndex(g.smallBlindIndex)
-	g.actingPlayerIndex = g.nextPlayerIndex(g.bigBlindIndex)
-}
-
-func (g *Game) nextPlayerIndex(index int) int {
-	temp := index + 1
-	if temp > len(g.players)-1 {
-		temp = 0
-	}
-	return temp
-}
-
-func containsAction(moves []ActionType, target ActionType) bool {
-	for _, move := range moves {
-		if move == target {
-			return true
-		}
-	}
-	return false
+	g.street = NoStreet
 }

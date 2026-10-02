@@ -41,5 +41,5 @@ type Options struct {
 }
 
 type ActionSource interface {
-	NextAction(gameState ActionRequest) (Action, error)
+	NextAction(ActionRequest) (Action, error)
 }

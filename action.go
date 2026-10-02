@@ -7,6 +7,7 @@ const (
 	Check
 	Call
 	Raise
+	Leave
 )
 
 func (m ActionType) String() string {
@@ -19,6 +20,8 @@ func (m ActionType) String() string {
 		return "Call"
 	case Raise:
 		return "Raise"
+	case Leave:
+		return "Leave"
 	default:
 		return "Unknown"
 	}

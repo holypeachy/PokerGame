@@ -13,6 +13,7 @@ type Player struct {
 	Bet       int
 	Acted     bool
 	Folded    bool
+	Left      bool
 }
 
 func NewPlayer(id string, stack int, first pokeralgo.Card, second pokeralgo.Card) (*Player, error) {

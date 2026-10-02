@@ -1,11 +1,16 @@
 package pokergame
 
-import pokeralgo "pokeralgo"
+import (
+	"fmt"
+	"strings"
+
+	"pokeralgo"
+)
 
 type BlindIndices struct {
 	Dealer     int
-	BigBlind   int
 	SmallBlind int
+	BigBlind   int
 }
 
 type PotState struct {
@@ -18,7 +23,8 @@ type PotState struct {
 type Street int
 
 const (
-	Preflop Street = iota
+	NoStreet Street = iota
+	Preflop
 	Flop
 	Turn
 	River
@@ -26,6 +32,8 @@ const (
 
 func (s Street) String() string {
 	switch s {
+	case NoStreet:
+		return "NoStreet"
 	case Preflop:
 		return "Preflop"
 	case Flop:
@@ -40,16 +48,61 @@ func (s Street) String() string {
 }
 
 type Event struct {
-	HandNumber   int
-	Street       Street
-	Type         EventType
-	Players      []PlayerState
+	// Common
+	Type       EventType
+	HandNumber int
+	Street     *Street
+	Players    []PlayerState
+
 	BlindIndices *BlindIndices
 	Board        []pokeralgo.Card
 	PlayerID     *string
-	Action       *Action
-	Pots         []PotState
-	Err          error
+	LegalActions []ActionType
+	Amount       *int
+	ActionType   *ActionType
+	Pots         *[]PotState
+
+	Err error
+}
+
+func (e Event) String() string {
+	var output strings.Builder
+	fmt.Fprintf(&output, "%s HandNumber: %d", e.Type, e.HandNumber)
+	if e.Street != nil {
+		fmt.Fprintf(&output, "\n   Street: %s", *e.Street)
+	}
+	fmt.Fprintf(&output, "\n   Players: %+v", e.Players)
+	if e.BlindIndices != nil {
+		fmt.Fprintf(&output, "\n   BlindIndices: %+v", *e.BlindIndices)
+	}
+	if e.Board != nil {
+		fmt.Fprintf(&output, "\n   Board: %v", e.Board)
+	}
+
+	var actionDetails []string
+	if e.PlayerID != nil {
+		actionDetails = append(actionDetails, fmt.Sprintf("PlayerID: %s", *e.PlayerID))
+	}
+	if e.LegalActions != nil {
+		actionDetails = append(actionDetails, fmt.Sprintf("LegalActions: %v", e.LegalActions))
+	}
+	if e.Amount != nil {
+		actionDetails = append(actionDetails, fmt.Sprintf("Amount: %d", *e.Amount))
+	}
+	if e.ActionType != nil {
+		actionDetails = append(actionDetails, fmt.Sprintf("Action: %+v", *e.ActionType))
+	}
+	if len(actionDetails) > 0 {
+		fmt.Fprintf(&output, "\n   %s", strings.Join(actionDetails, " | "))
+	}
+	if e.Pots != nil {
+		fmt.Fprintf(&output, "\n   Pots: %+v", *e.Pots)
+	}
+	if e.Err != nil {
+		fmt.Fprintf(&output, "\n   Err: %v", e.Err)
+	}
+	fmt.Fprintf(&output, "\n")
+	return output.String()
 }
 
 type EventType int
@@ -72,6 +125,7 @@ const (
 	WinnersDetermined
 	ChipsAwarded
 	PlayerBusted
+	PlayerLeft
 	HandEnded
 	GameEnded
 	ErrorState
@@ -113,6 +167,8 @@ func (e EventType) String() string {
 		return "ChipsAwarded"
 	case PlayerBusted:
 		return "PlayerBusted"
+	case PlayerLeft:
+		return "PlayerLeft"
 	case HandEnded:
 		return "HandEnded"
 	case GameEnded:
