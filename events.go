@@ -51,7 +51,7 @@ type Event struct {
 	// Common
 	Type       EventType
 	HandNumber int
-	Street     *Street
+	Street     Street
 	Players    []PlayerState
 
 	BlindIndices *BlindIndices
@@ -68,9 +68,7 @@ type Event struct {
 func (e Event) String() string {
 	var output strings.Builder
 	fmt.Fprintf(&output, "%s HandNumber: %d", e.Type, e.HandNumber)
-	if e.Street != nil {
-		fmt.Fprintf(&output, "\n   Street: %s", *e.Street)
-	}
+	fmt.Fprintf(&output, "\n   Street: %s", e.Street)
 	fmt.Fprintf(&output, "\n   Players: %+v", e.Players)
 	if e.BlindIndices != nil {
 		fmt.Fprintf(&output, "\n   BlindIndices: %+v", *e.BlindIndices)

@@ -7,7 +7,7 @@ import (
 )
 
 func (g *Game) mapAlgoPlayers(players []pokeralgo.Player) []*Player {
-	enginePlayers := append([]*Player(nil), g.players...)
+	enginePlayers := slices.Clone(g.players)
 	filtered := []*Player{}
 	for _, p := range enginePlayers {
 		for _, p2 := range players {
@@ -49,6 +49,7 @@ func (g *Game) legalActions(player *Player) []ActionType {
 	if g.AdditionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 {
 		moves = append(moves, Raise)
 	}
+	moves = append(moves, Leave)
 	return moves
 }
 
@@ -146,31 +147,37 @@ func (g *Game) nextPlayerIndex(index int) int {
 }
 
 func containsAction(moves []ActionType, target ActionType) bool {
-	for _, move := range moves {
-		if move == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(moves, target)
 }
 
-func (g *Game) newEvent(t EventType) Event {
+func (g *Game) checkGameOver() error {
+	if len(g.players) < 2 {
+		if len(g.players) != 1 {
+			return fmt.Errorf("%w: No Winner, invariant violation", ErrInternal)
+		}
+		g.emitGameEnded(g.players[0].ID)
+		g.gameOver = true
+	}
+	return nil
+}
+
+func (g *Game) newBaseEvent(t EventType) Event {
 	players := make([]PlayerState, 0, len(g.players))
 	for _, p := range g.players {
 		players = append(players, PlayerState{
 			ID:        p.ID,
 			Stack:     p.Stack,
 			Folded:    p.Folded,
+			Left:      p.Left,
 			HoleCards: p.HoleCards,
 			Bet:       p.Bet,
 		})
 	}
 
-	s := g.street
 	return Event{
 		Type:       t,
 		HandNumber: g.handNumber,
-		Street:     &s,
+		Street:     g.street,
 		Players:    players,
 	}
 }

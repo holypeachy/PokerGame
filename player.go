@@ -67,6 +67,14 @@ func (p *Player) Fold() error {
 	return nil
 }
 
+func (p *Player) Leave() error {
+	if p.Left {
+		return fmt.Errorf("%w: Player already left.", ErrInternal)
+	}
+	p.Left = true
+	return nil
+}
+
 func (p *Player) Check() {
 	p.Acted = true
 }

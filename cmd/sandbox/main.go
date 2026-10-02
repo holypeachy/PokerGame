@@ -22,11 +22,7 @@ func main() {
 		pokergame.NewPlayerSpec("Zulu"),
 	}
 
-	if err := engine.SeatPlayers(playersInfo); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if err := engine.PlayHand(); err != nil {
+	if err := engine.Play(playersInfo); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -35,10 +31,13 @@ func main() {
 
 /*
 ! ISSUES:
+! If a call is all in, then raise should be removed
+! when 2 players are left, dealer is small blind
+! stale hole card data between hands
 !
 
 TODO
-TODO: 1. abstract out event construction, code is peppered with it.
+TODO: Refactor event emission
 TODO: 2. gate event construction based on needs to prevent unnecessary heap allocs. aka: levels of verbosity for logging (full), replay system and gui (core), ai training (off)
 TODO: Create a standard logger (logs to stdout + files). Turns events into detailed log entries.
 TODO: Add end hand and end game logic and reporting
@@ -56,7 +55,8 @@ TODO: Add limit hold'em rules
 		details
 
 * Changes
-* Started implementing event emission
-* We are so back
-* Removed codex docs
+* Pulled out event construction to their own functions
+* Errors now emit error events at public interfaces rather than all over the place
+* Engine core logic loop done yay!!
+*
 */

@@ -2,7 +2,6 @@ package pokergame
 
 import (
 	"fmt"
-	"slices"
 
 	pokeralgo "pokeralgo"
 )
@@ -33,6 +32,7 @@ type Game struct {
 
 	onePlayerLeft bool
 	runToShowdown bool
+	gameOver      bool
 }
 
 func New(options Options, actionSource ActionSource, onEvent func(Event)) *Game {
@@ -46,11 +46,32 @@ func New(options Options, actionSource ActionSource, onEvent func(Event)) *Game 
 	}
 }
 
-func (g *Game) SeatPlayers(playerSpecs []PlayerSpec) error {
+func (g *Game) Play(playerSpecs []PlayerSpec) error {
+	if err := g.seatPlayers(playerSpecs); err != nil {
+		return err
+	}
+
+	for !g.gameOver {
+		if err := g.playHand(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *Game) seatPlayers(playerSpecs []PlayerSpec) error {
+	err := g.seatPlayersInternal(playerSpecs)
+	if err != nil {
+		g.emitErr(err)
+	}
+	return err
+}
+
+func (g *Game) seatPlayersInternal(playerSpecs []PlayerSpec) error {
 	if g.actionSource == nil {
 		return fmt.Errorf("%w: action source has not been initialized", ErrInternal)
-	}
-	if len(playerSpecs) < 2 {
+	} else if len(playerSpecs) < 2 {
 		return fmt.Errorf("%w: Not enough players", ErrGame)
 	}
 
@@ -67,13 +88,20 @@ func (g *Game) SeatPlayers(playerSpecs []PlayerSpec) error {
 		g.players = append(g.players, player)
 	}
 
-	e := g.newEvent(GameStarted)
-	g.emit(e)
+	g.emitGameStarted()
 
 	return nil
 }
 
-func (g *Game) PlayHand() error {
+func (g *Game) playHand() error {
+	err := g.playHandInternal()
+	if err != nil {
+		g.emitErr(err)
+	}
+	return err
+}
+
+func (g *Game) playHandInternal() error {
 	if len(g.players) == 0 {
 		return fmt.Errorf("%w: call SeatPlayers before PlayHand", ErrGame)
 	}
@@ -82,18 +110,10 @@ func (g *Game) PlayHand() error {
 	g.deck.Reset()
 	g.board = g.board[:0]
 
-	e := g.newEvent(HandStarted)
-	e.Board = slices.Clone(g.board)
-	g.emit(e)
+	g.emitHandStarted()
 
 	g.advanceBlinds()
-	e = g.newEvent(BlindsAdvanced)
-	e.BlindIndices = &BlindIndices{
-		Dealer:     g.dealerIndex,
-		SmallBlind: g.smallBlindIndex,
-		BigBlind:   g.bigBlindIndex,
-	}
-	g.emit(e)
+	g.emitBlindsAdvanced()
 
 	// Pre-flop
 	if err := g.players[g.smallBlindIndex].postBlind(g.options.BigBlind / 2); err != nil {
@@ -104,21 +124,15 @@ func (g *Game) PlayHand() error {
 	}
 	g.CurrentBet = g.options.BigBlind
 
-	e = g.newEvent(BlindsPosted)
-	e.BlindIndices = &BlindIndices{
-		Dealer:     g.dealerIndex,
-		SmallBlind: g.smallBlindIndex,
-		BigBlind:   g.bigBlindIndex,
-	}
-	g.emit(e)
+	g.emitBlindsPosted()
 
 	for _, p := range g.players {
 		if err := p.deal(g.deck.MustDraw(), g.deck.MustDraw()); err != nil {
 			return err
 		}
 	}
-	e = g.newEvent(HoleCardsDealt)
-	g.emit(e)
+
+	g.emitHoleCardsDealt()
 
 	g.street = Preflop
 	if err := g.runStreet(); err != nil {
@@ -164,12 +178,13 @@ func (g *Game) PlayHand() error {
 		}
 	}
 
-	e = g.newEvent(HandEnded)
-	e.Board = slices.Clone(g.board)
-	// pots?!!!
-	g.emit(e)
+	g.emitHandEnded()
 
+	g.removeBustedLeft()
 	g.resetForNextHand()
+	if err := g.checkGameOver(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -177,19 +192,11 @@ func (g *Game) runStreet() error {
 	if g.onePlayerLeft || g.runToShowdown {
 		if g.runToShowdown {
 			fmt.Println("Skip to showdown")
-			e := g.newEvent(StreetStarted)
-			e.Board = slices.Clone(g.board)
-			s := g.street
-			e.Street = &s
-			g.emit(e)
+			g.emitStreetStarted()
 		}
 		return nil
 	}
-	e := g.newEvent(StreetStarted)
-	e.Board = slices.Clone(g.board)
-	s := g.street
-	e.Street = &s
-	g.emit(e)
+	g.emitStreetStarted()
 
 	isStreetOver := false
 	for !isStreetOver {
@@ -204,8 +211,7 @@ func (g *Game) runStreet() error {
 			} else if g.playersAbleToAct() < 2 && g.betsSettled() {
 				g.runToShowdown = true
 				isStreetOver = true
-				e := g.newEvent(RunToShowdown)
-				g.emit(e)
+				g.emitRunToShowdown()
 				break
 			} else if currentPlayer.Folded || isAllIn(currentPlayer) {
 				g.actingPlayerIndex = g.nextPlayerIndex(g.actingPlayerIndex)
@@ -219,50 +225,35 @@ func (g *Game) runStreet() error {
 			actionRequest := g.actionRequest()
 			validMoves := actionRequest.LegalActions
 
-			e := g.newEvent(ActionRequested)
-			id := g.players[g.actingPlayerIndex].ID
-			e.PlayerID = &id
-			e.Board = slices.Clone(g.board)
-			e.LegalActions = slices.Clone(validMoves)
-			e.Amount = &actionRequest.ToCall
-			g.emit(e)
+			g.emitActionRequested(actionRequest)
 
 			input, err := g.actionSource.NextAction(actionRequest)
 			if err != nil {
 				return err
 			}
 			if !containsAction(validMoves, input.Type) {
-
-				e := g.newEvent(ActionInvalid)
-				id := g.players[g.actingPlayerIndex].ID
-				e.PlayerID = &id
-				e.Board = slices.Clone(g.board)
-				e.LegalActions = slices.Clone(validMoves)
-				e.Amount = &actionRequest.ToCall
-				a := input.Type
-				e.ActionType = &a
-				g.emit(e)
+				g.emitActionInvalid(actionRequest, input)
 
 				return fmt.Errorf("%w: Input not valid", ErrGame)
 			}
 
 			// After
-			if input.Type == Fold {
+			if input.Type == Leave {
+				if err := currentPlayer.Leave(); err != nil {
+					return err
+				}
+				// emit in fold
+			}
+
+			if input.Type == Fold || input.Type == Leave {
 				if err := currentPlayer.Fold(); err != nil {
 					return err
 				}
 				if g.remainingPlayerCount() == 1 {
 					g.onePlayerLeft = true
 					isStreetOver = true
-					e := g.newEvent(ActionValid)
-					id := currentPlayer.ID
-					e.PlayerID = &id
-					e.Board = slices.Clone(g.board)
-					amount := input.Amount
-					e.Amount = &amount
-					actionType := input.Type
-					e.ActionType = &actionType
-					g.emit(e)
+					g.emitActionValid(currentPlayer.ID, input) // we emit cus break
+					// no need emit one player left
 					break
 				}
 			} else if input.Type == Raise || input.Type == Call {
@@ -272,8 +263,8 @@ func (g *Game) runStreet() error {
 
 				if input.Type == Raise {
 					toCall := g.CurrentBet - currentPlayer.Bet
-					if input.Amount < toCall {
-						if err := currentPlayer.commitChips(toCall + 10); err != nil { // magic number warning
+					if input.Amount <= toCall {
+						if err := currentPlayer.commitChips(toCall); err != nil { // I had toCall + 10, I'll just call
 							return err
 						}
 					} else {
@@ -294,21 +285,12 @@ func (g *Game) runStreet() error {
 				currentPlayer.Check()
 			}
 
-			e = g.newEvent(ActionValid)
-			id2 := g.players[g.actingPlayerIndex].ID
-			e.PlayerID = &id2
-			e.Board = slices.Clone(g.board)
-			am := input.Amount
-			e.Amount = &am
-			a := input.Type
-			e.ActionType = &a
-			g.emit(e)
+			g.emitActionValid(g.players[g.actingPlayerIndex].ID, input)
 
 			if g.playersAbleToAct() < 2 && g.betsSettled() {
 				isStreetOver = true
 				g.runToShowdown = true
-				e := g.newEvent(RunToShowdown)
-				g.emit(e)
+				g.emitRunToShowdown()
 				break
 			}
 
@@ -335,20 +317,9 @@ func (g *Game) runStreet() error {
 			return fmt.Errorf("%w: 1 non-folded player remains but count is not 1", ErrInternal)
 		}
 
-		e = g.newEvent(OnePlayerLeft)
-		e.Board = slices.Clone(g.board)
-		id := winner.ID
-		e.PlayerID = &id
-		e.Pots = &[]PotState{
-			{EligiblePlayerIDs: []string{winner.ID},
-				Amount:    pot,
-				WinnerIDs: []string{winner.ID}},
-		}
-		g.emit(e)
+		g.emitOnePlayerLeft(winner.ID, pot)
 	}
-	e = g.newEvent(StreetEnded)
-	e.Board = slices.Clone(g.board)
-	g.emit(e)
+	g.emitStreetEnded()
 
 	g.resetStreet()
 	return nil
@@ -365,21 +336,7 @@ func (g *Game) resolveShowdown() error {
 		return err
 	}
 
-	e := g.newEvent(PotsCreated)
-	e.Board = slices.Clone(g.board)
-	eventPots := make([]PotState, 0, len(pots))
-	for _, p := range pots {
-		elig := make([]string, 0, len(p.EligiblePlayers))
-		for _, e := range p.EligiblePlayers {
-			elig = append(elig, e.ID)
-		}
-		eventPots = append(eventPots, PotState{
-			EligiblePlayerIDs: elig,
-			Amount:            p.Amount,
-		})
-	}
-	e.Pots = &eventPots
-	g.emit(e)
+	g.emitPotsCreated(pots)
 
 	algoPlayers := toAlgoPlayers(g.players)
 	fmt.Println("All Algo Players")
@@ -405,26 +362,7 @@ func (g *Game) resolveShowdown() error {
 			pot.Winners = g.mapAlgoPlayers(winners)
 		}
 	}
-	e = g.newEvent(WinnersDetermined)
-	e.Board = slices.Clone(g.board)
-	eventPots = make([]PotState, 0, len(pots))
-	for _, p := range pots {
-		eligIDs := make([]string, 0, len(p.EligiblePlayers))
-		for _, e := range p.EligiblePlayers {
-			eligIDs = append(eligIDs, e.ID)
-		}
-		winIDs := make([]string, 0, len(p.Winners))
-		for _, w := range p.Winners {
-			winIDs = append(winIDs, w.ID)
-		}
-		eventPots = append(eventPots, PotState{
-			EligiblePlayerIDs: eligIDs,
-			Amount:            p.Amount,
-			WinnerIDs:         winIDs,
-		})
-	}
-	e.Pots = &eventPots
-	g.emit(e)
+	g.emitWinnersDetermined(pots)
 
 	fmt.Print("\n--- PAY ---\n\n")
 	for _, item := range pots {
@@ -433,26 +371,7 @@ func (g *Game) resolveShowdown() error {
 		}
 	}
 
-	e = g.newEvent(ChipsAwarded)
-	e.Board = slices.Clone(g.board)
-	eventPots = make([]PotState, 0, len(pots))
-	for _, p := range pots {
-		eligIDs := make([]string, 0, len(p.EligiblePlayers))
-		for _, e := range p.EligiblePlayers {
-			eligIDs = append(eligIDs, e.ID)
-		}
-		winIDs := make([]string, 0, len(p.Winners))
-		for _, w := range p.Winners {
-			winIDs = append(winIDs, w.ID)
-		}
-		eventPots = append(eventPots, PotState{
-			EligiblePlayerIDs: eligIDs,
-			Amount:            p.Amount,
-			WinnerIDs:         winIDs,
-		})
-	}
-	e.Pots = &eventPots
-	g.emit(e)
+	g.emitChipsAwarded(pots)
 	return nil
 }
 
@@ -471,4 +390,18 @@ func (g *Game) resetForNextHand() {
 	g.onePlayerLeft = false
 	g.runToShowdown = false
 	g.street = NoStreet
+}
+
+func (g *Game) removeBustedLeft() {
+	newPlayers := make([]*Player, 0)
+	for _, p := range g.players {
+		if p.Stack == 0 {
+			g.emitPlayerBusted(p.ID)
+		} else if p.Left {
+			g.emitPlayerLeft(p.ID)
+		} else {
+			newPlayers = append(newPlayers, p)
+		}
+	}
+	g.players = newPlayers
 }

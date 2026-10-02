@@ -28,6 +28,7 @@ type PlayerState struct {
 	ID        string
 	Stack     int
 	Folded    bool
+	Left      bool
 	HoleCards pokeralgo.HoleCards
 	Bet       int
 }

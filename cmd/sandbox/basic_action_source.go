@@ -59,7 +59,7 @@ func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (p
 
 	amount := 0
 	if selectedMove == pokergame.Raise {
-		fmt.Println("ToCall + What Amount:")
+		fmt.Println("Raise Amount:")
 		amountIn, err := s.reader.ReadString('\n')
 		if err != nil {
 			return pokergame.Action{}, err
@@ -68,6 +68,9 @@ func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (p
 		amount, err = strconv.Atoi(amountIn)
 		if err != nil {
 			return pokergame.Action{}, err
+		}
+		if amount >= actionRequest.ToCall {
+			amount = amount - actionRequest.ToCall
 		}
 	}
 
