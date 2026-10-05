@@ -39,6 +39,7 @@ func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (p
 		fmt.Println("null")
 	}
 	fmt.Printf("ToCall: %d\n", actionRequest.ToCall)
+	fmt.Printf("Hole Cards: %v\n", actionRequest.PlayerToAct.HoleCards)
 	fmt.Println("Select your move:")
 	moveIn, err := s.reader.ReadString('\n')
 	if err != nil {

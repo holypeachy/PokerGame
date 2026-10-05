@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"pokeralgo"
 
 	pokergame "pokergame"
 )
 
 func main() {
-	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EnableDebug: true}
+	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EventVerbosity: pokergame.EventsCore}
 	actionSource := NewBasicActionSource()
 	engine := pokergame.New(engineOptions, actionSource, func(e pokergame.Event) {
 		fmt.Println(e)
@@ -22,6 +23,7 @@ func main() {
 		pokergame.NewPlayerSpec("Zulu"),
 	}
 
+	pokeralgo.SetDebugLevel(pokeralgo.DebugSummary)
 	if err := engine.Play(playersInfo); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -37,8 +39,6 @@ func main() {
 !
 
 TODO
-TODO: Refactor event emission
-TODO: 2. gate event construction based on needs to prevent unnecessary heap allocs. aka: levels of verbosity for logging (full), replay system and gui (core), ai training (off)
 TODO: Create a standard logger (logs to stdout + files). Turns events into detailed log entries.
 TODO: Add end hand and end game logic and reporting
 TODO: Add Marked for removal logic
@@ -55,8 +55,8 @@ TODO: Add limit hold'em rules
 		details
 
 * Changes
-* Pulled out event construction to their own functions
-* Errors now emit error events at public interfaces rather than all over the place
-* Engine core logic loop done yay!!
-*
+* Refactored event emissions
+* Added EventVerbosity and implemented a guard to prevent event construction
+* Added createPotEvent
+* Added chipsAwardedOnePlayerLeft
 */

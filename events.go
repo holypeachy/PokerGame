@@ -103,7 +103,7 @@ func (e Event) String() string {
 	return output.String()
 }
 
-type EventType int
+type EventType uint8
 
 const (
 	GameStarted EventType = iota

@@ -6,6 +6,37 @@ import (
 	"slices"
 )
 
+type EventVerbosity uint8
+
+const (
+	EventsOff  EventVerbosity = iota // Errors only
+	EventsCore                       // Primary Game Info
+	EventsAll                        // Every Step Logged
+)
+
+var eventLevelLookup = map[EventType]EventVerbosity{
+	GameStarted:       EventsCore,
+	HandStarted:       EventsAll,
+	BlindsAdvanced:    EventsAll,
+	BlindsPosted:      EventsCore,
+	HoleCardsDealt:    EventsAll,
+	StreetStarted:     EventsCore,
+	ActionRequested:   EventsCore,
+	ActionValid:       EventsCore,
+	ActionInvalid:     EventsCore,
+	StreetEnded:       EventsAll,
+	OnePlayerLeft:     EventsAll,
+	RunToShowdown:     EventsAll,
+	ShowdownStarted:   EventsAll,
+	PotsCreated:       EventsAll,
+	WinnersDetermined: EventsAll,
+	ChipsAwarded:      EventsCore,
+	HandEnded:         EventsAll,
+	PlayerBusted:      EventsCore,
+	PlayerLeft:        EventsCore,
+	GameEnded:         EventsCore,
+}
+
 func (g *Game) mapAlgoPlayers(players []pokeralgo.Player) []*Player {
 	enginePlayers := slices.Clone(g.players)
 	filtered := []*Player{}
@@ -161,7 +192,10 @@ func (g *Game) checkGameOver() error {
 	return nil
 }
 
-func (g *Game) newBaseEvent(t EventType) Event {
+func (g *Game) newBaseEvent(t EventType) *Event {
+	if eventLevelLookup[t] > g.options.EventVerbosity {
+		return nil
+	}
 	players := make([]PlayerState, 0, len(g.players))
 	for _, p := range g.players {
 		players = append(players, PlayerState{
@@ -174,7 +208,7 @@ func (g *Game) newBaseEvent(t EventType) Event {
 		})
 	}
 
-	return Event{
+	return &Event{
 		Type:       t,
 		HandNumber: g.handNumber,
 		Street:     g.street,
@@ -182,8 +216,12 @@ func (g *Game) newBaseEvent(t EventType) Event {
 	}
 }
 
-func (g *Game) emit(e Event) {
+func (g *Game) emit(e *Event) {
 	if g.onEvent != nil {
-		g.onEvent(e)
+		g.onEvent(*e)
 	}
+}
+
+func (g *Game) SetEventsVerbosity(lvl EventVerbosity) {
+	g.options.EventVerbosity = lvl
 }

@@ -37,8 +37,7 @@ type Options struct {
 	BuyIn            int
 	BigBlind         int
 	AdditionalRaises int
-	EnableDebug      bool
-	DebugVerbosity   DebugLevel
+	EventVerbosity
 }
 
 type ActionSource interface {

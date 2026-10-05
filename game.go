@@ -18,8 +18,10 @@ type Game struct {
 
 	// Hand
 	handNumber int
-	street     Street
-	board      []pokeralgo.Card
+
+	// Street
+	street Street
+	board  []pokeralgo.Card
 
 	dealerIndex     int
 	smallBlindIndex int
@@ -30,6 +32,7 @@ type Game struct {
 	CurrentBet           int
 	AdditionalRaiseCount int
 
+	// Control Flow
 	onePlayerLeft bool
 	runToShowdown bool
 	gameOver      bool
@@ -191,7 +194,6 @@ func (g *Game) playHandInternal() error {
 func (g *Game) runStreet() error {
 	if g.onePlayerLeft || g.runToShowdown {
 		if g.runToShowdown {
-			fmt.Println("Skip to showdown")
 			g.emitStreetStarted()
 		}
 		return nil
@@ -318,6 +320,7 @@ func (g *Game) runStreet() error {
 		}
 
 		g.emitOnePlayerLeft(winner.ID, pot)
+		g.emitChipsOnePlayerLeft(winner.ID, pot)
 	}
 	g.emitStreetEnded()
 
@@ -327,7 +330,6 @@ func (g *Game) runStreet() error {
 
 func (g *Game) resolveShowdown() error {
 	if g.onePlayerLeft {
-		fmt.Println("No Showdown. Only one player left")
 		return nil
 	}
 
@@ -338,12 +340,6 @@ func (g *Game) resolveShowdown() error {
 
 	g.emitPotsCreated(pots)
 
-	algoPlayers := toAlgoPlayers(g.players)
-	fmt.Println("All Algo Players")
-	for _, item := range algoPlayers {
-		fmt.Println(item)
-	}
-	fmt.Println()
 	for _, pot := range pots {
 		if len(pot.EligiblePlayers) == 1 {
 			pot.Winners = pot.EligiblePlayers
@@ -364,7 +360,6 @@ func (g *Game) resolveShowdown() error {
 	}
 	g.emitWinnersDetermined(pots)
 
-	fmt.Print("\n--- PAY ---\n\n")
 	for _, item := range pots {
 		if err := item.Distribute(); err != nil {
 			return err
