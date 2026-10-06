@@ -77,7 +77,7 @@ func (g *Game) legalActions(player *Player) []ActionType {
 		moves = append(moves, Check)
 	}
 	// we count players that can act because we don't want to raise if another player is all-in
-	if g.AdditionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 {
+	if g.AdditionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 && toCall < player.Stack {
 		moves = append(moves, Raise)
 	}
 	moves = append(moves, Leave)
@@ -163,10 +163,21 @@ func (g *Game) actionRequest() ActionRequest {
 }
 
 func (g *Game) advanceBlinds() {
-	g.dealerIndex = g.nextPlayerIndex(g.dealerIndex)
-	g.smallBlindIndex = g.nextPlayerIndex(g.dealerIndex)
-	g.bigBlindIndex = g.nextPlayerIndex(g.smallBlindIndex)
-	g.actingPlayerIndex = g.nextPlayerIndex(g.bigBlindIndex)
+	if len(g.players) == 2 {
+		g.dealerIndex = g.nextPlayerIndex(g.dealerIndex)
+		g.smallBlindIndex = g.dealerIndex
+		g.bigBlindIndex = g.nextPlayerIndex(g.dealerIndex)
+		g.actingPlayerIndex = g.dealerIndex
+	} else {
+		g.dealerIndex = g.nextPlayerIndex(g.dealerIndex)
+		g.smallBlindIndex = g.nextPlayerIndex(g.dealerIndex)
+		g.bigBlindIndex = g.nextPlayerIndex(g.smallBlindIndex)
+		g.actingPlayerIndex = g.nextPlayerIndex(g.bigBlindIndex)
+	}
+}
+
+func (g *Game) adjustDealer(removed int) {
+	g.dealerIndex -= removed
 }
 
 func (g *Game) nextPlayerIndex(index int) int {

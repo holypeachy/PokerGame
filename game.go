@@ -2,6 +2,7 @@ package pokergame
 
 import (
 	"fmt"
+	"slices"
 
 	pokeralgo "pokeralgo"
 )
@@ -380,6 +381,16 @@ func (g *Game) resetStreet() {
 func (g *Game) resetForNextHand() {
 	for _, p := range g.players {
 		p.resetForNextHand()
+		p.HoleCards = pokeralgo.HoleCards{
+			First: pokeralgo.Card{
+				Rank: 0,
+				Suit: pokeralgo.Spades,
+			},
+			Second: pokeralgo.Card{
+				Rank: 0,
+				Suit: pokeralgo.Hearts,
+			},
+		}
 	}
 	g.AdditionalRaiseCount = 0
 	g.onePlayerLeft = false
@@ -389,14 +400,35 @@ func (g *Game) resetForNextHand() {
 
 func (g *Game) removeBustedLeft() {
 	newPlayers := make([]*Player, 0)
+	removedBeforeDealer := 0
+	indexToRemove := 0
 	for _, p := range g.players {
 		if p.Stack == 0 {
+			indexToRemove = slices.IndexFunc(g.players, func(current *Player) bool {
+				if current.ID == p.ID {
+					return true
+				}
+				return false
+			})
+			if indexToRemove <= g.dealerIndex {
+				removedBeforeDealer++
+			}
 			g.emitPlayerBusted(p.ID)
 		} else if p.Left {
+			indexToRemove = slices.IndexFunc(g.players, func(current *Player) bool {
+				if current.ID == p.ID {
+					return true
+				}
+				return false
+			})
+			if indexToRemove <= g.dealerIndex {
+				removedBeforeDealer++
+			}
 			g.emitPlayerLeft(p.ID)
 		} else {
 			newPlayers = append(newPlayers, p)
 		}
 	}
+	g.adjustDealer(removedBeforeDealer)
 	g.players = newPlayers
 }

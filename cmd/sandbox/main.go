@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"pokeralgo"
 
 	pokergame "pokergame"
 )
 
 func main() {
-	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EventVerbosity: pokergame.EventsCore}
+	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EventVerbosity: pokergame.EventsAll}
 	actionSource := NewBasicActionSource()
 	engine := pokergame.New(engineOptions, actionSource, func(e pokergame.Event) {
 		fmt.Println(e)
@@ -23,7 +22,7 @@ func main() {
 		pokergame.NewPlayerSpec("Zulu"),
 	}
 
-	pokeralgo.SetDebugLevel(pokeralgo.DebugSummary)
+	// pokeralgo.SetDebugLevel(pokeralgo.DebugSummary)
 	if err := engine.Play(playersInfo); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -33,20 +32,18 @@ func main() {
 
 /*
 ! ISSUES:
-! If a call is all in, then raise should be removed
-! when 2 players are left, dealer is small blind
-! stale hole card data between hands
 !
 
 TODO
 TODO: Create a standard logger (logs to stdout + files). Turns events into detailed log entries.
-TODO: Add end hand and end game logic and reporting
-TODO: Add Marked for removal logic
+TODO: Unit testing
 TODO: Create a standard replay sytem
-TODO: Unit and integration tests
+TODO: Test std replay
+TODO: Integration testing
 TODO: Add limit hold'em rules
 
 ? Future Ideas
+? Add increading blinds up to a blind limit
 ?
 
 * Notes
@@ -55,8 +52,10 @@ TODO: Add limit hold'em rules
 		details
 
 * Changes
-* Refactored event emissions
-* Added EventVerbosity and implemented a guard to prevent event construction
-* Added createPotEvent
-* Added chipsAwardedOnePlayerLeft
+* When removing players, dealer index is adjusted
+* If a call is all in, the raise option will be removed
+* when 2 players are left, dealer is small blind, and acting is dealer
+* removed debug.go
+* stale hole card data between hands
+*
 */
