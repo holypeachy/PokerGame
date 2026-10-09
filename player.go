@@ -115,5 +115,5 @@ func (p *Player) deal(first pokeralgo.Card, second pokeralgo.Card) error {
 }
 
 func (p *Player) String() string {
-	return fmt.Sprintf("%s\nCurrentBet: %d | Hand: %s | Stack: %d", p.ID, p.Bet, p.HoleCards, p.Stack)
+	return fmt.Sprintf("%s | CurrentBet: %d | Hand: %s | Stack: %d", p.ID, p.Bet, p.HoleCards, p.Stack)
 }

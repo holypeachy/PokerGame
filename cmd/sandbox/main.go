@@ -2,17 +2,26 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"pokergame/internal/eventlog"
 
 	pokergame "pokergame"
 )
 
 func main() {
-	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EventVerbosity: pokergame.EventsAll}
+	file, err := os.Create("game.log")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	logger := eventlog.New(io.MultiWriter(os.Stdout, file))
+
+	engineOptions := pokergame.Options{BuyIn: 1000, BigBlind: 50, AdditionalRaises: 1, EventVerbosity: pokergame.EventsCore}
 	actionSource := NewBasicActionSource()
-	engine := pokergame.New(engineOptions, actionSource, func(e pokergame.Event) {
-		fmt.Println(e)
-	})
+	engine := pokergame.New(engineOptions, actionSource, logger.OnEvent)
 
 	playersInfo := []pokergame.PlayerSpec{
 		pokergame.NewPlayerSpec("Alpha"),
@@ -35,7 +44,6 @@ func main() {
 !
 
 TODO
-TODO: Create a standard logger (logs to stdout + files). Turns events into detailed log entries.
 TODO: Unit testing
 TODO: Create a standard replay sytem
 TODO: Test std replay
@@ -52,10 +60,6 @@ TODO: Add limit hold'em rules
 		details
 
 * Changes
-* When removing players, dealer index is adjusted
-* If a call is all in, the raise option will be removed
-* when 2 players are left, dealer is small blind, and acting is dealer
-* removed debug.go
-* stale hole card data between hands
+* Added a standard logger to handle stdout and file out.
 *
 */
