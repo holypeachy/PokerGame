@@ -15,7 +15,7 @@ type Game struct {
 
 	// Table
 	deck    *pokeralgo.Deck
-	players []*Player
+	players []*player
 
 	// Hand
 	handNumber int
@@ -30,8 +30,8 @@ type Game struct {
 
 	actingPlayerIndex int
 
-	CurrentBet           int
-	AdditionalRaiseCount int
+	currentBet           int
+	additionalRaiseCount int
 
 	// Control Flow
 	onePlayerLeft bool
@@ -44,7 +44,7 @@ func New(options Options, actionSource ActionSource, onEvent func(Event)) *Game 
 		options:      options,
 		actionSource: actionSource,
 		onEvent:      onEvent,
-		players:      []*Player{},
+		players:      []*player{},
 		deck:         pokeralgo.NewDeck(),
 		board:        make([]pokeralgo.Card, 0, 5),
 	}
@@ -85,7 +85,7 @@ func (g *Game) seatPlayersInternal(playerSpecs []PlayerSpec) error {
 	g.handNumber = 0
 
 	for _, pi := range playerSpecs {
-		player, err := NewPlayerFromSpec(pi, g.options.BuyIn, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Hearts, IsHoleCard: true}, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Spades, IsHoleCard: true})
+		player, err := newPlayerFromSpec(pi, g.options.BuyIn, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Hearts, IsHoleCard: true}, pokeralgo.Card{Rank: 0, Suit: pokeralgo.Spades, IsHoleCard: true})
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func (g *Game) playHandInternal() error {
 	if err := g.players[g.bigBlindIndex].postBlind(g.options.BigBlind); err != nil {
 		return err
 	}
-	g.CurrentBet = g.options.BigBlind
+	g.currentBet = g.options.BigBlind
 
 	g.emitBlindsPosted()
 
@@ -230,10 +230,7 @@ func (g *Game) runStreet() error {
 
 			g.emitActionRequested(actionRequest)
 
-			input, err := g.actionSource.NextAction(actionRequest)
-			if err != nil {
-				return err
-			}
+			input := g.actionSource.NextAction(actionRequest)
 			if !containsAction(validMoves, input.Type) {
 				g.emitActionInvalid(actionRequest, input)
 
@@ -242,14 +239,14 @@ func (g *Game) runStreet() error {
 
 			// After
 			if input.Type == Leave {
-				if err := currentPlayer.Leave(); err != nil {
+				if err := currentPlayer.leave(); err != nil {
 					return err
 				}
 				// emit in fold
 			}
 
 			if input.Type == Fold || input.Type == Leave {
-				if err := currentPlayer.Fold(); err != nil {
+				if err := currentPlayer.fold(); err != nil {
 					return err
 				}
 				if g.remainingPlayerCount() == 1 {
@@ -261,11 +258,11 @@ func (g *Game) runStreet() error {
 				}
 			} else if input.Type == Raise || input.Type == Call {
 				if g.allPlayersActed() && input.Type == Raise {
-					g.AdditionalRaiseCount++
+					g.additionalRaiseCount++
 				}
 
 				if input.Type == Raise {
-					toCall := g.CurrentBet - currentPlayer.Bet
+					toCall := g.currentBet - currentPlayer.Bet
 					if input.Amount <= toCall {
 						if err := currentPlayer.commitChips(toCall); err != nil { // I had toCall + 10, I'll just call
 							return err
@@ -276,16 +273,16 @@ func (g *Game) runStreet() error {
 						}
 					}
 				} else {
-					if err := currentPlayer.commitChips(g.CurrentBet - currentPlayer.Bet); err != nil {
+					if err := currentPlayer.commitChips(g.currentBet - currentPlayer.Bet); err != nil {
 						return err
 					}
 				}
 
-				if currentPlayer.Bet > g.CurrentBet {
-					g.CurrentBet = currentPlayer.Bet
+				if currentPlayer.Bet > g.currentBet {
+					g.currentBet = currentPlayer.Bet
 				}
 			} else if input.Type == Check {
-				currentPlayer.Check()
+				currentPlayer.check()
 			}
 
 			g.emitActionValid(g.players[g.actingPlayerIndex].ID, input)
@@ -362,7 +359,7 @@ func (g *Game) resolveShowdown() error {
 	g.emitWinnersDetermined(pots)
 
 	for _, item := range pots {
-		if err := item.Distribute(); err != nil {
+		if err := item.distribute(); err != nil {
 			return err
 		}
 	}
@@ -373,9 +370,9 @@ func (g *Game) resolveShowdown() error {
 
 func (g *Game) resetStreet() {
 	for _, p := range g.players {
-		p.resetForStreet()
+		p.resetForNextStreet()
 	}
-	g.AdditionalRaiseCount = 0
+	g.additionalRaiseCount = 0
 }
 
 func (g *Game) resetForNextHand() {
@@ -392,19 +389,19 @@ func (g *Game) resetForNextHand() {
 			},
 		}
 	}
-	g.AdditionalRaiseCount = 0
+	g.additionalRaiseCount = 0
 	g.onePlayerLeft = false
 	g.runToShowdown = false
 	g.street = NoStreet
 }
 
 func (g *Game) removeBustedLeft() {
-	newPlayers := make([]*Player, 0)
+	newPlayers := make([]*player, 0)
 	removedBeforeDealer := 0
 	indexToRemove := 0
 	for _, p := range g.players {
 		if p.Stack == 0 {
-			indexToRemove = slices.IndexFunc(g.players, func(current *Player) bool {
+			indexToRemove = slices.IndexFunc(g.players, func(current *player) bool {
 				if current.ID == p.ID {
 					return true
 				}
@@ -415,7 +412,7 @@ func (g *Game) removeBustedLeft() {
 			}
 			g.emitPlayerBusted(p.ID)
 		} else if p.Left {
-			indexToRemove = slices.IndexFunc(g.players, func(current *Player) bool {
+			indexToRemove = slices.IndexFunc(g.players, func(current *player) bool {
 				if current.ID == p.ID {
 					return true
 				}

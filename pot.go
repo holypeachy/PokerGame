@@ -1,22 +1,25 @@
 package pokergame
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Pot struct {
-	EligiblePlayers []*Player
+	EligiblePlayers []*player
 	Amount          int
 
-	Winners []*Player
+	Winners []*player
 }
 
-func NewPot(value int, players []*Player) *Pot {
+func newPot(value int, players []*player) *Pot {
 	return &Pot{
 		EligiblePlayers: players,
 		Amount:          value,
 	}
 }
 
-func (p *Pot) Distribute() error {
+func (p *Pot) distribute() error {
 	if len(p.Winners) == 0 {
 		return fmt.Errorf("%w: Winners should never be null. This means we never determined the winner(s) of this pot.", ErrInternal)
 	}
@@ -31,17 +34,15 @@ func (p *Pot) Distribute() error {
 }
 
 func (p *Pot) String() string {
-	players := "| "
-	for _, player := range p.EligiblePlayers {
-		players += player.ID + " | "
+	players := make([]string, len(p.EligiblePlayers))
+	for i, player := range p.EligiblePlayers {
+		players[i] = player.ID
 	}
 
-	wString := ""
-	if p.Winners != nil {
-		for _, winner := range p.Winners {
-			wString += fmt.Sprintf("\t%s (%d) | %d => %d\n", winner.ID, p.Amount/len(p.Winners), winner.Stack, winner.Stack+p.Amount/len(p.Winners))
-		}
+	winners := make([]string, len(p.Winners))
+	for i, winner := range p.Winners {
+		winners[i] = winner.ID
 	}
 
-	return fmt.Sprintf("Players (%d): \n%s\nValue: %d\nWinner(s):\n%s", len(p.EligiblePlayers), players, p.Amount, wString)
+	return fmt.Sprintf("Pot Eligible:[%s] Amount:%d Winners:[%s]", strings.Join(players, ", "), p.Amount, strings.Join(winners, ", "))
 }

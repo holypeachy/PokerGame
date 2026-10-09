@@ -19,7 +19,7 @@ func NewBasicActionSource() *BasicActionSource {
 	}
 }
 
-func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (pokergame.Action, error) {
+func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) pokergame.Action {
 	moves := map[int]pokergame.ActionType{}
 	currentPlayer := "null"
 	if actionRequest.PlayerToAct != nil {
@@ -43,19 +43,19 @@ func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (p
 	fmt.Println("Select your move:")
 	moveIn, err := s.reader.ReadString('\n')
 	if err != nil {
-		return pokergame.Action{}, err
+		panic(err)
 	}
 	moveIn = strings.TrimSpace(moveIn)
 	if moveIn == "" {
-		return pokergame.Action{}, fmt.Errorf("%w: empty input", pokergame.ErrGame)
+		panic(fmt.Errorf("%w: empty input", pokergame.ErrGame))
 	}
 	moveNumber, err := strconv.Atoi(moveIn)
 	if err != nil {
-		return pokergame.Action{}, err
+		panic(err)
 	}
 	selectedMove, ok := moves[moveNumber]
 	if !ok {
-		return pokergame.Action{}, fmt.Errorf("%w: invalid move selection", pokergame.ErrGame)
+		panic(fmt.Errorf("%w: invalid move selection", pokergame.ErrGame))
 	}
 
 	amount := 0
@@ -63,17 +63,17 @@ func (s *BasicActionSource) NextAction(actionRequest pokergame.ActionRequest) (p
 		fmt.Println("Raise Amount:")
 		amountIn, err := s.reader.ReadString('\n')
 		if err != nil {
-			return pokergame.Action{}, err
+			panic(err)
 		}
 		amountIn = strings.TrimSpace(amountIn)
 		amount, err = strconv.Atoi(amountIn)
 		if err != nil {
-			return pokergame.Action{}, err
+			return pokergame.Action{}
 		}
 		if amount >= actionRequest.ToCall {
 			amount = amount - actionRequest.ToCall
 		}
 	}
 
-	return pokergame.Action{Type: selectedMove, Amount: amount + actionRequest.ToCall}, nil
+	return pokergame.Action{Type: selectedMove, Amount: amount + actionRequest.ToCall}
 }

@@ -5,7 +5,7 @@ import "fmt"
 var potDebugEnabled = true
 
 type contribution struct {
-	Player    *Player
+	Player    *player
 	Remaining int
 	Folded    bool
 }
@@ -14,7 +14,7 @@ func (t *contribution) String() string {
 	return fmt.Sprintf("Owner: %s | Value: %d | Folded: %t", t.Player.ID, t.Remaining, t.Folded)
 }
 
-func buildPots(players []*Player) ([]*Pot, error) {
+func buildPots(players []*player) ([]*Pot, error) {
 	atLeastOneNonFolded := false
 	for _, item := range players {
 		if !item.Folded {
@@ -51,9 +51,8 @@ func buildPots(players []*Player) ([]*Pot, error) {
 	return splitPots(trackers)
 }
 
-func splitPots(trackers []*contribution) ([]*Pot, error) {
-	// end condition
-	if len(trackers) == 0 {
+func splitPots(contribs []*contribution) ([]*Pot, error) {
+	if len(contribs) == 0 {
 		if potDebugEnabled {
 			fmt.Println("End of Recursion.")
 		}
@@ -61,16 +60,16 @@ func splitPots(trackers []*contribution) ([]*Pot, error) {
 	}
 
 	// pot splitting logic
-	min, err := getMinBet(trackers)
+	min, err := getMinBet(contribs)
 	if err != nil {
 		return nil, err
 	}
 	potTotal := 0
 	foldedTotal := 0
-	potPlayers := []*Player{}
+	potPlayers := []*player{}
 
 	// loop through trackers and remove value
-	for _, t := range trackers {
+	for _, t := range contribs {
 		if t.Folded {
 			if t.Remaining <= min {
 				foldedTotal += t.Remaining
@@ -86,25 +85,25 @@ func splitPots(trackers []*contribution) ([]*Pot, error) {
 		}
 	}
 
-	pot := NewPot(potTotal+foldedTotal, potPlayers)
+	pot := newPot(potTotal+foldedTotal, potPlayers)
 	if potDebugEnabled {
 		fmt.Println("Pot in Recursion:")
 		fmt.Println(pot)
-		fmt.Printf("Current Number of Trackers: %d\n", len(trackers))
+		fmt.Printf("Current Number of Trackers: %d\n", len(contribs))
 		fmt.Println()
 	}
 
 	// prepare trackers for next recursion
-	nextTrackers := trackers[:0]
-	for _, t := range trackers {
+	nextContribs := contribs[:0]
+	for _, t := range contribs {
 		if t.Remaining != 0 {
-			nextTrackers = append(nextTrackers, t)
+			nextContribs = append(nextContribs, t)
 		}
 	}
 
 	// we combine all the pots
 	pots := []*Pot{pot}
-	nextPots, err := splitPots(nextTrackers)
+	nextPots, err := splitPots(nextContribs)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +112,7 @@ func splitPots(trackers []*contribution) ([]*Pot, error) {
 }
 
 func getMinBet(trackers []*contribution) (int, error) {
-	min := int(^uint(0) >> 1)
+	min := int(^uint(0) >> 1) // max int. shift right to remove sign
 	found := false
 
 	for _, t := range trackers {

@@ -41,16 +41,16 @@ func main() {
 
 /*
 ! ISSUES:
-!
+! Add odd chip handling
 
 TODO
-TODO: Unit testing
+TODO: Verify test cases
 TODO: Create a standard replay sytem
 TODO: Test std replay
-TODO: Integration testing
-TODO: Add limit hold'em rules
+TODO: Integration testing with replay system
 
 ? Future Ideas
+? Add limit hold'em rules
 ? Add increading blinds up to a blind limit
 ?
 
@@ -60,6 +60,10 @@ TODO: Add limit hold'em rules
 		details
 
 * Changes
-* Added a standard logger to handle stdout and file out.
-*
+* Removed console_action_source
+* NextAction no longer returns an error
+* Added pot_algo, street, and legal actions unit tests
+* Added between hand transition unit tests
+* Added player unit tests
+* Added showdown and events unit tests
 */

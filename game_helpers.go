@@ -37,9 +37,9 @@ var eventLevelLookup = map[EventType]EventVerbosity{
 	GameEnded:         EventsCore,
 }
 
-func (g *Game) mapAlgoPlayers(players []pokeralgo.Player) []*Player {
+func (g *Game) mapAlgoPlayers(players []pokeralgo.Player) []*player {
 	enginePlayers := slices.Clone(g.players)
-	filtered := []*Player{}
+	filtered := []*player{}
 	for _, p := range enginePlayers {
 		for _, p2 := range players {
 			if p2.Name == p.ID {
@@ -56,7 +56,7 @@ func (g *Game) mapAlgoPlayers(players []pokeralgo.Player) []*Player {
 	return filtered
 }
 
-func toAlgoPlayers(enginePlayers []*Player) []pokeralgo.Player {
+func toAlgoPlayers(enginePlayers []*player) []pokeralgo.Player {
 	players := []pokeralgo.Player{}
 	for _, ep := range enginePlayers {
 		players = append(players, pokeralgo.NewPlayer(ep.ID, ep.HoleCards.First, ep.HoleCards.Second))
@@ -64,27 +64,27 @@ func toAlgoPlayers(enginePlayers []*Player) []pokeralgo.Player {
 	return players
 }
 
-func (g *Game) legalActions(player *Player) []ActionType {
+func (g *Game) legalActions(player *player) []ActionType {
 	if player.Folded {
 		panic("Cannot get possible moves for folded player")
 	}
 
 	moves := []ActionType{Fold}
-	toCall := g.CurrentBet - player.Bet
+	toCall := g.currentBet - player.Bet
 	if toCall > 0 {
 		moves = append(moves, Call)
 	} else if toCall == 0 {
 		moves = append(moves, Check)
 	}
 	// we count players that can act because we don't want to raise if another player is all-in
-	if g.AdditionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 && toCall < player.Stack {
+	if g.additionalRaiseCount != g.options.AdditionalRaises && g.playersAbleToAct() > 1 && toCall < player.Stack {
 		moves = append(moves, Raise)
 	}
 	moves = append(moves, Leave)
 	return moves
 }
 
-func (g *Game) remainingPlayer() (*Player, error) {
+func (g *Game) remainingPlayer() (*player, error) {
 	for _, p := range g.players {
 		if !p.Folded {
 			return p, nil
@@ -95,7 +95,7 @@ func (g *Game) remainingPlayer() (*Player, error) {
 
 func (g *Game) betsSettled() bool {
 	for _, p := range g.players {
-		if !p.Folded && !isAllIn(p) && g.CurrentBet != p.Bet {
+		if !p.Folded && !isAllIn(p) && g.currentBet != p.Bet {
 			return false
 		}
 	}
@@ -131,7 +131,7 @@ func (g *Game) remainingPlayerCount() int {
 	return count
 }
 
-func isAllIn(player *Player) bool {
+func isAllIn(player *player) bool {
 	if player.Stack == 0 && player.Bet == 0 {
 		panic(fmt.Errorf("%w: Player has 0 stack and 0 bet. Busted players should never be in play.", ErrInternal))
 	}
@@ -146,13 +146,13 @@ func (g *Game) actionRequest() ActionRequest {
 	playerStates := []PlayerState{}
 	for _, player := range g.players {
 		holeCards := player.HoleCards
-		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: holeCards, Bet: player.Bet, Folded: player.Folded})
+		playerStates = append(playerStates, PlayerState{ID: player.ID, Stack: player.Stack, HoleCards: holeCards, Bet: player.Bet, Folded: player.Folded, Left: player.Left})
 	}
 	currentPlayer := &playerStates[g.actingPlayerIndex]
 	if currentPlayer.Folded {
 		panic("Current player cannot be folded")
 	}
-	toCall := g.CurrentBet - currentPlayer.Bet
+	toCall := g.currentBet - currentPlayer.Bet
 	return ActionRequest{
 		PlayerStates:   playerStates,
 		CommunityCards: slices.Clone(g.board),

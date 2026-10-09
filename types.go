@@ -41,5 +41,5 @@ type Options struct {
 }
 
 type ActionSource interface {
-	NextAction(ActionRequest) (Action, error)
+	NextAction(ActionRequest) Action
 }
